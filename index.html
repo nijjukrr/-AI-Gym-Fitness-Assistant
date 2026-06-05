@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TRIVAN'S TECH AI Gym & Fitness Assistant</title>
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="TRIVAN'S TECH AI Gym & Fitness Assistant - An all-in-one AI ecosystem integrating workout detection, diet planning, behavior tracking, smart gym IoT, and conversational AI.">
+  <meta name="keywords" content="AI Gym, Fitness Assistant, MediaPipe Pose, Calorie Coach, Behavioral AI, Virtual Gym Buddy, Pose Analyzer, Gym Planner, TRIVAN'S TECH">
+  <meta name="author" content="TRIVAN'S TECH AI">
+  
+  <!-- Font import (Outfit & Inter) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Custom CSS stylesheet link -->
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <!-- Simulated Gmail Notification Toast -->
+  <div id="gmail-toast" class="gmail-toast hidden">
+    <div class="toast-icon">
+      <i data-lucide="mail"></i>
+    </div>
+    <div class="toast-content">
+      <div class="toast-header">
+        <span class="toast-app-name">Gmail</span>
+        <span class="toast-time">Just now</span>
+      </div>
+      <p class="toast-body">
+        <strong>TRIVAN'S TECH Verification</strong><br>
+        Your OTP verification code is: <span id="toast-otp" class="toast-otp-code">123456</span>
+      </p>
+    </div>
+  </div>
+
+  <!-- Fullscreen Video Background Login Portal -->
+  <div id="login-container" class="login-container">
+    <video autoplay muted loop playsinline id="bg-video">
+      <source src="Gym Promotional Video Cinematic Workout Advertisment [get.gt].mp4" type="video/mp4">
+      Your browser does not support HTML5 video tags.
+    </video>
+    
+    <div class="login-overlay"></div>
+    
+    <div class="login-card">
+      <div class="login-brand">
+        <i data-lucide="dumbbell" class="login-logo-icon"></i>
+        <span class="brand-gradient">TRIVAN'S TECH</span>
+      </div>
+      <p class="login-subtitle">AI Gym & Fitness Assistant</p>
+      
+      <form id="login-form" onsubmit="handleLoginSubmit(event)">
+        <div class="input-group">
+          <label for="login-email">Gmail Address</label>
+          <input type="email" id="login-email" placeholder="username@gmail.com" required>
+        </div>
+        
+        <div class="input-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" required>
+        </div>
+        
+        <!-- Gmail OTP Verification (Hidden initially) -->
+        <div class="verification-wrapper hidden" id="otp-wrapper">
+          <label for="login-otp">Gmail Verification Code</label>
+          <div class="otp-input-row">
+            <input type="text" id="login-otp" placeholder="Enter 6-digit OTP" maxlength="6">
+            <button type="button" class="btn btn-sm btn-green" id="btn-resend-otp" onclick="resendOTP()">Resend</button>
+          </div>
+          <small class="otp-hint-text">Simulating verification... Check the sliding Gmail notification at the top! (Default: 123456)</small>
+        </div>
+        
+        <!-- Action Buttons -->
+        <button type="button" class="btn btn-red w-full mt-4" id="btn-verify-gmail" onclick="startGmailVerification()">
+          Verify Gmail Address
+        </button>
+        <button type="submit" class="btn btn-green w-full mt-4 hidden" id="btn-login-submit">
+          Sign In to Assistant
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- App Wrapper (Hidden initially before login) -->
+  <div class="app-container hidden" id="app-wrapper">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo">
+          <i data-lucide="dumbbell" class="logo-icon"></i>
+          <span class="brand-gradient">TRIVAN'S TECH</span>
+        </div>
+        <small class="brand-subtitle">AI Fitness Assistant</small>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="#dashboard" class="menu-item active" id="nav-dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </a>
+        <div class="menu-divider">Core Modules</div>
+        
+        <a href="#gym-trainer" class="menu-item" id="nav-gym-trainer">
+          <i data-lucide="camera"></i>
+          <span>1. Gym Trainer</span>
+        </a>
+        <a href="#dietician" class="menu-item" id="nav-dietician">
+          <i data-lucide="apple"></i>
+          <span>2. Calorie Coach</span>
+        </a>
+        <a href="#smart-gym" class="menu-item" id="nav-smart-gym">
+          <i data-lucide="cpu"></i>
+          <span>3. Smart Gym IoT</span>
+        </a>
+        <a href="#habit-tracker" class="menu-item" id="nav-habit-tracker">
+          <i data-lucide="calendar"></i>
+          <span>4. Habit Tracker</span>
+        </a>
+        <a href="#gym-buddy" class="menu-item" id="nav-gym-buddy">
+          <i data-lucide="message-square-heart"></i>
+          <span>5. Gym Buddy</span>
+        </a>
+        <a href="#pose-analyzer" class="menu-item" id="nav-pose-analyzer">
+          <i data-lucide="line-chart"></i>
+          <span>6. Pose Analyzer</span>
+        </a>
+        <a href="#recommender" class="menu-item" id="nav-recommender">
+          <i data-lucide="map-pin"></i>
+          <span>7. Gym Recommender</span>
+        </a>
+        <a href="#architecture" class="menu-item" id="nav-architecture">
+          <i data-lucide="layers"></i>
+          <span>System Architecture</span>
+        </a>
+      </nav>
+
+      <!-- User profile & Logout in sidebar footer -->
+      <div class="sidebar-footer">
+        <div class="user-profile-row">
+          <div class="user-profile">
+            <div class="user-avatar">NK</div>
+            <div class="user-info">
+              <span class="user-name">Nishanth KR</span>
+              <span class="user-status">Premium Member</span>
+            </div>
+          </div>
+          <button class="logout-btn" id="btn-logout" onclick="logout()" title="Log Out">
+            <i data-lucide="log-out"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Top header bar -->
+      <header class="app-header">
+        <div class="header-search">
+          <i data-lucide="search"></i>
+          <input type="text" placeholder="Search workouts, recipes, gym locations..." class="search-input">
+        </div>
+        <div class="header-actions">
+          <button class="header-btn" id="btn-notifications" aria-label="Notifications" onclick="toggleNotificationsDropdown()">
+            <i data-lucide="bell"></i>
+            <span class="btn-badge" id="notifications-badge">3</span>
+          </button>
+          
+          <!-- Notifications Dropdown Popup -->
+          <div class="notifications-dropdown hidden" id="notifications-dropdown">
+            <div class="notifications-dropdown-header">
+              <h4>Notifications</h4>
+              <button class="clear-btn" onclick="clearNotifications()">Clear All</button>
+            </div>
+            <div class="notifications-list" id="notifications-list-items">
+              <div class="notification-item">
+                <div class="notification-icon info"><i data-lucide="database"></i></div>
+                <div class="notification-content">
+                  <p><strong>Database Configured:</strong> MongoDB Atlas connection URI successfully configured in env.</p>
+                  <span>1 min ago</span>
+                </div>
+              </div>
+              <div class="notification-item">
+                <div class="notification-icon alert"><i data-lucide="brain"></i></div>
+                <div class="notification-content">
+                  <p><strong>AI Model Trained:</strong> scikit-learn Logistic Regression trained and deployed.</p>
+                  <span>5 mins ago</span>
+                </div>
+              </div>
+              <div class="notification-item">
+                <div class="notification-icon warn"><i data-lucide="wifi-off"></i></div>
+                <div class="notification-content">
+                  <p><strong>Connection Notice:</strong> Whitelist your IP on MongoDB Atlas to sync logs.</p>
+                  <span>10 mins ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button class="header-btn" id="theme-toggle" aria-label="Toggle Theme">
+            <i data-lucide="sun"></i>
+          </button>
+          <div class="live-status">
+            <span class="status-pulse"></span>
+            <span class="status-text">AI Core Connected</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content Container -->
+      <div class="content-body">
+        
+        <!-- SECTION: DASHBOARD -->
+        <section class="tab-content" id="dashboard">
+          <div class="welcome-banner">
+            <div class="welcome-text">
+              <h1>Welcome back, Nishanth! 👋</h1>
+              <p>Your AI Fitness Assistant is ready. Today is a great day to crush your squats goal!</p>
+            </div>
+            <div class="welcome-metrics">
+              <div class="quick-metric">
+                <span class="metric-val" id="dash-streak">5 Days</span>
+                <span class="metric-label">Streak</span>
+              </div>
+              <div class="quick-metric border-l">
+                <span class="metric-val" id="dash-calories">1,450 kcal</span>
+                <span class="metric-label">Daily Calories</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modules Grid Overview -->
+          <div class="dashboard-grid">
+            
+            <!-- Widget 1: Gym Trainer -->
+            <div class="dash-card card-gym-trainer hover-scale">
+              <div class="card-header">
+                <div class="card-icon-wrapper color-red"><i data-lucide="video"></i></div>
+                <span class="card-badge bg-red">Real-time</span>
+              </div>
+              <h3>AI Gym Trainer</h3>
+              <p>Form check & rep counter. Ready for Squats and Bicep Curls.</p>
+              <div class="card-preview">
+                <span class="preview-metric">Active Session</span>
+                <span class="preview-value" id="dash-trainer-reps">0 Reps</span>
+              </div>
+              <button class="btn btn-red btn-sm btn-nav-tab" data-target="gym-trainer">Launch Trainer</button>
+            </div>
+
+            <!-- Widget 2: Dietician -->
+            <div class="dash-card card-dietician hover-scale">
+              <div class="card-header">
+                <div class="card-icon-wrapper color-green"><i data-lucide="apple"></i></div>
+                <span class="card-badge bg-green">Active Plan</span>
+              </div>
+              <h3>Calorie Coach</h3>
+              <p>Diet analyzer & meal recommender. Track your nutritional goals.</p>
+              <div class="card-preview">
+                <div class="progress-bar-container">
+                  <div class="progress-bar-fill bg-green" style="width: 65%" id="dash-diet-progress"></div>
+                </div>
+                <span class="preview-metric">Calories: 1450 / 2200 kcal</span>
+              </div>
+              <button class="btn btn-green btn-sm btn-nav-tab" data-target="dietician">Open Coach</button>
+            </div>
+
+            <!-- Widget 3: Smart Gym -->
+            <div class="dash-card card-smart-gym hover-scale">
+              <div class="card-header">
+                <div class="card-icon-wrapper color-orange"><i data-lucide="bluetooth"></i></div>
+                <span class="card-badge bg-orange">Connected</span>
+              </div>
+              <h3>Smart Gym IoT</h3>
+              <p>Monitor smart treadmill and weights telemetry in real-time.</p>
+              <div class="card-preview">
+                <span class="preview-metric">Smart Treadmill</span>
+                <span class="preview-value text-orange" id="dash-iot-status">6.5 mph (Incline 3%)</span>
+              </div>
+              <button class="btn btn-orange btn-sm btn-nav-tab" data-target="smart-gym">IoT Controls</button>
+            </div>
+
+            <!-- Widget 4: Habit Tracker -->
+            <div class="dash-card card-habit hover-scale">
+              <div class="card-header">
+                <div class="card-icon-wrapper color-purple"><i data-lucide="shield-alert"></i></div>
+                <span class="card-badge bg-purple">AI Risk Analysis</span>
+              </div>
+              <h3>Habit Tracker</h3>
+              <p>Predicting consistency. Keep your workout streaks alive.</p>
+              <div class="card-preview">
+                <span class="preview-metric">Skipping Probability</span>
+                <span class="preview-value text-purple" id="dash-habit-risk">12% (Low)</span>
+              </div>
+              <button class="btn btn-purple btn-sm btn-nav-tab" data-target="habit-tracker">Tracker</button>
+            </div>
+
+            <!-- Widget 5: Gym Buddy -->
+            <div class="dash-card card-buddy hover-scale">
+              <div class="card-header">
+                <div class="card-icon-wrapper color-pink"><i data-lucide="heart-handshake"></i></div>
+                <span class="card-badge bg-pink">Online</span>
+              </div>
+              <h3>Virtual Gym Buddy</h3>
+              <p>Your conversational workout companion. Keeping you motivated.</p>
+              <div class="card-preview">
+                <span class="preview-metric">Buddy Mood</span>
+                <span class="preview-value text-pink" id="dash-buddy-mood">Psyched! 🔥</span>
+              </div>
+              <button class="btn btn-pink btn-sm btn-nav-tab" data-target="gym-buddy">Chat with Buddy</button>
+            </div>
+
+            <!-- Widget 6: Pose Analyzer -->
+            <div class="dash-card card-pose hover-scale">
+              <div class="card-header">
+                <div class="card-icon-wrapper color-red"><i data-lucide="award"></i></div>
+                <span class="card-badge bg-red">Analyzed</span>
+              </div>
+              <h3>Performance Score</h3>
+              <p>Motion efficiency & range of motion analysis over time.</p>
+              <div class="card-preview">
+                <span class="preview-metric">Weekly Score</span>
+                <span class="preview-value text-red" id="dash-pose-score">92 / 100</span>
+              </div>
+              <button class="btn btn-red btn-sm btn-nav-tab" data-target="pose-analyzer">View Reports</button>
+            </div>
+          </div>
+          
+          <!-- Quick recommendation section on dashboard -->
+          <div class="dashboard-footer-section">
+            <div class="footer-card recommender-quick-card">
+              <div class="footer-card-content">
+                <i data-lucide="compass" class="footer-card-icon text-red"></i>
+                <div class="footer-card-text">
+                  <h4>Recommended Challenge for You</h4>
+                  <p>Join the <strong>30-Day Squat Master Challenge</strong>. 120 members active today.</p>
+                </div>
+              </div>
+              <button class="btn btn-red btn-sm btn-nav-tab" data-target="recommender">Join Challenge</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 1: AI GYM TRAINER -->
+        <section class="tab-content hidden" id="gym-trainer">
+          <div class="section-header">
+            <div>
+              <h2>AI Gym Trainer</h2>
+              <p>Real-time form tracking, posture correction, and rep counter using computer vision.</p>
+            </div>
+            <div class="trainer-exercise-select">
+              <label for="select-exercise">Exercise:</label>
+              <select id="select-exercise" class="select-input">
+                <option value="bicep-curl">Bicep Curl (Right Arm)</option>
+                <option value="squat">Squat</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="trainer-grid">
+            <!-- Camera & Skeleton Display Panel -->
+            <div class="trainer-camera-panel block-card">
+              <div class="camera-wrapper">
+                <!-- Video tag hidden from user, rendering is onto canvas -->
+                <video id="webcam" class="hidden-video" width="640" height="480" autoplay playsinline></video>
+                <canvas id="camera-overlay" width="640" height="480"></canvas>
+                
+                <!-- Overlay banners -->
+                <div class="camera-status-overlay" id="camera-status">
+                  <i data-lucide="video-off" class="cam-icon"></i>
+                  <p>Webcam Not Started</p>
+                  <small>Click "Start Session" below. If no camera is available, Demo Mode will run automatically.</small>
+                </div>
+
+                <div class="posture-feedback-bubble hidden" id="feedback-bubble">
+                  <span id="feedback-text">Keep your back straight!</span>
+                </div>
+              </div>
+
+              <!-- Camera Controls -->
+              <div class="camera-controls">
+                <button class="btn btn-red btn-lg" id="btn-start-camera">
+                  <i data-lucide="play" class="mr-2"></i>Start Session
+                </button>
+                <button class="btn btn-outline btn-lg hidden" id="btn-stop-camera">
+                  <i data-lucide="square" class="mr-2"></i>Stop Session
+                </button>
+                <button class="btn btn-outline btn-lg" id="btn-demo-mode">
+                  <i data-lucide="play-circle" class="mr-2"></i>Demo Mode
+                </button>
+              </div>
+            </div>
+
+            <!-- Stats & Form Feedback Panel -->
+            <div class="trainer-stats-panel">
+              <!-- Rep Counter Large Card -->
+              <div class="stats-card rep-count-card block-card">
+                <span class="label">Reps Counted</span>
+                <h2 id="trainer-rep-count">0</h2>
+                <div class="progress-bar-container mt-4">
+                  <div class="progress-bar-fill bg-red" id="trainer-rep-progress" style="width: 0%"></div>
+                </div>
+                <div class="rep-target-label">Target: <span id="trainer-rep-target">10 reps</span></div>
+              </div>
+
+              <!-- Joint Angles Live Card -->
+              <div class="stats-card angle-card block-card">
+                <h3>Angle Analytics</h3>
+                <div class="angle-metric">
+                  <span class="angle-name" id="angle-1-name">Elbow Angle:</span>
+                  <span class="angle-val" id="angle-1-val">0°</span>
+                </div>
+                <div class="angle-metric">
+                  <span class="angle-name" id="angle-2-name">Shoulder Angle:</span>
+                  <span class="angle-val" id="angle-2-val">0°</span>
+                </div>
+                <div class="angle-metric">
+                  <span class="angle-name" id="angle-3-name">Wrist Incline:</span>
+                  <span class="angle-val" id="angle-3-val">0°</span>
+                </div>
+              </div>
+
+              <!-- Form Correction Logs -->
+              <div class="stats-card feedback-logs-card block-card">
+                <h3>Real-time AI Guidance</h3>
+                <div class="feedback-list" id="feedback-logs">
+                  <div class="feedback-item info">
+                    <span class="time">00:00</span>
+                    <span class="msg">Select exercise and press Start Session.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 2: AI DIETICIAN & CALORIE COACH -->
+        <section class="tab-content hidden" id="dietician">
+          <div class="section-header">
+            <div>
+              <h2>AI Dietician & Calorie Coach</h2>
+              <p>Personalized diet generator, BMI tracker, and real-time calorie log.</p>
+            </div>
+          </div>
+
+          <div class="dietician-grid">
+            <!-- Chat Interface -->
+            <div class="chat-container block-card">
+              <div class="chat-header">
+                <div class="buddy-header-info">
+                  <div class="buddy-avatar bg-green"><i data-lucide="chef-hat"></i></div>
+                  <div>
+                    <h4>NutriCoach AI</h4>
+                    <small>Expert Nutritionist & Calorie Coach</small>
+                  </div>
+                </div>
+              </div>
+              <div class="chat-messages" id="diet-chat-messages">
+                <div class="chat-bubble bot">
+                  <p>Hello! I am your AI Calorie Coach. Fill out the BMI & weight goals panel on the right, or choose a quick topic below to customize your nutrition plan:</p>
+                </div>
+              </div>
+              <div class="chat-suggestion-chips">
+                <button class="chip" onclick="sendDietPrompt('Generate a high-protein breakfast recipe')">High-protein breakfast</button>
+                <button class="chip" onclick="sendDietPrompt('Recommend a post-workout snack')">Post-workout snack</button>
+                <button class="chip" onclick="sendDietPrompt('Give me a low-carb grocery list')">Low-carb grocery list</button>
+              </div>
+              <div class="chat-input-wrapper">
+                <input type="text" id="diet-chat-input" placeholder="Ask about recipes, calorie targets, meal prep..." onkeypress="handleDietChatKeyPress(event)">
+                <button class="btn btn-green btn-icon" id="btn-send-diet-chat" onclick="sendDietChat()">
+                  <i data-lucide="send"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- BMI & Calorie Tracker Panel -->
+            <div class="diet-side-panel">
+              <!-- BMI Calculator -->
+              <div class="block-card diet-card">
+                <h3>BMI Calculator & Goals</h3>
+                <div class="bmi-inputs">
+                  <div class="input-group">
+                    <label for="bmi-weight">Weight (kg):</label>
+                    <input type="number" id="bmi-weight" value="70" class="num-input">
+                  </div>
+                  <div class="input-group">
+                    <label for="bmi-height">Height (cm):</label>
+                    <input type="number" id="bmi-height" value="175" class="num-input">
+                  </div>
+                </div>
+                <button class="btn btn-green w-full mt-2" onclick="calculateBMI()">Calculate BMI</button>
+                <div class="bmi-result-panel hidden" id="bmi-result">
+                  <div class="bmi-score-row">
+                    <span class="bmi-label">Your BMI:</span>
+                    <span class="bmi-val" id="bmi-val">22.9</span>
+                  </div>
+                  <div class="bmi-class-badge" id="bmi-class">Normal Weight</div>
+                  <p class="bmi-desc" id="bmi-desc">Great! You are in the healthy BMI range.</p>
+                </div>
+              </div>
+
+              <!-- Calorie Log -->
+              <div class="block-card diet-card">
+                <h3>Add Calorie Log</h3>
+                <div class="calorie-input-row">
+                  <input type="text" id="calorie-food-name" placeholder="Food item (e.g., Avocado Toast)" class="text-input">
+                  <input type="number" id="calorie-amount" placeholder="kcal" class="num-input w-24">
+                  <button class="btn btn-green btn-icon" onclick="addCalorieItem()"><i data-lucide="plus"></i></button>
+                </div>
+                <div class="calorie-history">
+                  <h4>Today's Logs</h4>
+                  <ul class="calorie-list" id="calorie-list-items">
+                    <li>
+                      <span class="food">Oatmeal with Almonds</span>
+                      <span class="kcal">+350 kcal</span>
+                    </li>
+                    <li>
+                      <span class="food">Grilled Chicken Breast & Rice</span>
+                      <span class="kcal">+650 kcal</span>
+                    </li>
+                    <li>
+                      <span class="food">Whey Protein Shake</span>
+                      <span class="kcal">+250 kcal</span>
+                    </li>
+                    <li>
+                      <span class="food">Greek Yogurt with Berries</span>
+                      <span class="kcal">+200 kcal</span>
+                    </li>
+                  </ul>
+                  <div class="calorie-total-summary">
+                    <span>Total Consumed:</span>
+                    <span class="total-val" id="total-calories-val">1450 kcal</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 3: SMART GYM ASSISTANT -->
+        <section class="tab-content hidden" id="smart-gym">
+          <div class="section-header">
+            <div>
+              <h2>Smart Gym Assistant (AI + IoT Integration)</h2>
+              <p>Monitor connected equipment, track resistance details, and manage workout incline controls.</p>
+            </div>
+            <div class="iot-status-indicator">
+              <span class="status-pulse bg-orange"></span>
+              <span>2 IoT Devices Paired</span>
+            </div>
+          </div>
+
+          <div class="iot-grid">
+            <!-- Treadmill Controls Card -->
+            <div class="block-card iot-card">
+              <div class="iot-card-header">
+                <h3><i data-lucide="milestone" class="mr-2 text-orange"></i>Smart Treadmill (Model T-800)</h3>
+                <span class="iot-badge online">Running</span>
+              </div>
+              <div class="treadmill-simulator-canvas">
+                <canvas id="treadmill-belt" width="400" height="150"></canvas>
+              </div>
+              <div class="iot-controls-sliders">
+                <div class="slider-group">
+                  <div class="slider-label">
+                    <span>Speed</span>
+                    <span id="treadmill-speed-val">6.5 mph</span>
+                  </div>
+                  <input type="range" id="treadmill-speed" min="0" max="12" step="0.5" value="6.5" class="slider" oninput="updateTreadmillSettings()">
+                </div>
+                <div class="slider-group">
+                  <div class="slider-label">
+                    <span>Incline</span>
+                    <span id="treadmill-incline-val">3 %</span>
+                  </div>
+                  <input type="range" id="treadmill-incline" min="0" max="15" step="1" value="3" class="slider" oninput="updateTreadmillSettings()">
+                </div>
+              </div>
+              <div class="iot-readouts">
+                <div class="readout">
+                  <span class="r-val" id="treadmill-dist">1.25 mi</span>
+                  <span class="r-lbl">Distance</span>
+                </div>
+                <div class="readout">
+                  <span class="r-val" id="treadmill-calories">140 kcal</span>
+                  <span class="r-lbl">Burned</span>
+                </div>
+                <div class="readout">
+                  <span class="r-val" id="treadmill-heartrate">142 bpm</span>
+                  <span class="r-lbl">Heart Rate</span>
+                </div>
+              </div>
+              <div class="iot-action-buttons">
+                <button class="btn btn-orange btn-lg w-full" id="btn-treadmill-toggle" onclick="toggleTreadmill()">Pause Treadmill</button>
+              </div>
+            </div>
+
+            <!-- Smart Dumbbell / Cable Weight Stack -->
+            <div class="block-card iot-card">
+              <div class="iot-card-header">
+                <h3><i data-lucide="weight" class="mr-2 text-orange"></i>Smart Dumbbells & Cable Stack</h3>
+                <span class="iot-badge online">Connected</span>
+              </div>
+              <div class="weight-stack-visualizer">
+                <div class="weight-bar" style="width: 80%" id="weight-bar-1">Smart Dumbbell R: Active</div>
+                <div class="weight-bar" style="width: 80%" id="weight-bar-2">Smart Dumbbell L: Active</div>
+              </div>
+              <div class="iot-controls-sliders mt-6">
+                <div class="slider-group">
+                  <div class="slider-label">
+                    <span>Cable Stack Target Load</span>
+                    <span id="cable-weight-val">80 lbs</span>
+                  </div>
+                  <input type="range" id="cable-weight" min="10" max="200" step="10" value="80" class="slider" oninput="updateCableWeight()">
+                </div>
+              </div>
+              <div class="iot-readouts mt-4">
+                <div class="readout">
+                  <span class="r-val" id="cable-reps">12 reps</span>
+                  <span class="r-lbl">Current Set</span>
+                </div>
+                <div class="readout">
+                  <span class="r-val">85%</span>
+                  <span class="r-lbl">Velocity Loss</span>
+                </div>
+                <div class="readout">
+                  <span class="r-val" id="cable-power">180 W</span>
+                  <span class="r-lbl">Peak Power</span>
+                </div>
+              </div>
+              <div class="iot-alert-box info mt-4">
+                <i data-lucide="info" class="text-orange mr-2"></i>
+                <p>AI suggests: Reduce load by 10 lbs for your next set to keep velocity above threshold.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 4: AI FITNESS HABIT TRACKER -->
+        <section class="tab-content hidden" id="habit-tracker">
+          <div class="section-header">
+            <div>
+              <h2>AI Fitness Habit Tracker</h2>
+              <p>Predicting workout skipping risk using behavioral AI. Maintain consistency and streaks.</p>
+            </div>
+          </div>
+
+          <div class="habit-grid">
+            <!-- Behavioral Risk Simulator -->
+            <div class="block-card habit-panel">
+              <h3>Behavioral Risk Predictor</h3>
+              <p class="subtitle">Adjust parameters to see how daily behaviors influence your consistency rating and skipping risk score.</p>
+              
+              <div class="sliders-container">
+                <div class="slider-group">
+                  <div class="slider-label">
+                    <span>Sleep Duration</span>
+                    <span id="habit-sleep-val">7.5 hours</span>
+                  </div>
+                  <input type="range" id="habit-sleep" min="4" max="10" step="0.5" value="7.5" class="slider" oninput="runHabitPredictor()">
+                </div>
+
+                <div class="slider-group">
+                  <div class="slider-label">
+                    <span>Daily Stress Level</span>
+                    <span id="habit-stress-val">3 / 10</span>
+                  </div>
+                  <input type="range" id="habit-stress" min="1" max="10" step="1" value="3" class="slider" oninput="runHabitPredictor()">
+                </div>
+
+                <div class="slider-group">
+                  <div class="slider-label">
+                    <span>Energy Index</span>
+                    <span id="habit-energy-val">8 / 10</span>
+                  </div>
+                  <input type="range" id="habit-energy" min="1" max="10" step="1" value="8" class="slider" oninput="runHabitPredictor()">
+                </div>
+
+                <div class="slider-group">
+                  <div class="slider-label">
+                    <span>Days Since Last Workout</span>
+                    <span id="habit-days-val">1 Day</span>
+                  </div>
+                  <input type="range" id="habit-days" min="0" max="7" step="1" value="1" class="slider" oninput="runHabitPredictor()">
+                </div>
+              </div>
+
+              <!-- AI Output Display -->
+              <div class="habit-prediction-output mt-6">
+                <div class="prediction-score-box">
+                  <span class="box-label">Skip Probability</span>
+                  <h2 id="habit-prediction-percent">12%</h2>
+                  <div class="risk-badge low" id="habit-risk-badge">Low Risk</div>
+                </div>
+                <div class="nudge-box">
+                  <h4><i data-lucide="sparkles" class="text-purple mr-1"></i>AI Habit Coach Advice:</h4>
+                  <p id="habit-nudge-text">You're in the optimal zone! Head to the gym between 5 PM and 7 PM for a high-energy session.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dynamic Consistency Calendar -->
+            <div class="block-card habit-panel">
+              <h3>Workout Continuity Calendar</h3>
+              <div class="calendar-month-header">
+                <h4>June 2026</h4>
+                <div class="calendar-legend">
+                  <span class="legend-item"><span class="dot done"></span>Done</span>
+                  <span class="legend-item"><span class="dot skipped"></span>Skipped</span>
+                  <span class="legend-item"><span class="dot rest"></span>Rest</span>
+                </div>
+              </div>
+              <div class="calendar-grid" id="calendar-days">
+                <!-- Days will be dynamically loaded in app.js -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 5: VIRTUAL GYM BUDDY -->
+        <section class="tab-content hidden" id="gym-buddy">
+          <div class="section-header">
+            <div>
+              <h2>Virtual Gym Buddy</h2>
+              <p>Your AI Chat Companion. Keeps your motivation levels high and tracks your emotional state.</p>
+            </div>
+          </div>
+
+          <div class="buddy-grid">
+            <!-- Animated Companion Orb -->
+            <div class="block-card buddy-visualizer-card">
+              <h3>Your Companion: <span id="buddy-name">Aura</span></h3>
+              <div class="buddy-avatar-stage">
+                <!-- Pulse animation represents the buddy breathing/thinking -->
+                <div class="buddy-energy-orb focused" id="buddy-orb">
+                  <div class="orb-inner"></div>
+                  <div class="orb-eyes">
+                    <span class="eye left"></span>
+                    <span class="eye right"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="buddy-state-readouts">
+                <div class="buddy-state">
+                  <span class="label">Sentiment State</span>
+                  <span class="value text-pink" id="buddy-sentiment">Highly Positive</span>
+                </div>
+                <div class="buddy-state">
+                  <span class="label">Motivation Energy</span>
+                  <span class="value text-pink" id="buddy-energy">95%</span>
+                </div>
+              </div>
+              <!-- Web Speech controls -->
+              <div class="buddy-audio-control">
+                <label class="switch-container">
+                  <input type="checkbox" id="buddy-voice-enabled" checked>
+                  <span class="switch-slider"></span>
+                  <span class="switch-label">Enable Voice Responses</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Companion Chat Panel -->
+            <div class="chat-container block-card">
+              <div class="chat-header">
+                <div class="buddy-header-info">
+                  <div class="buddy-avatar bg-pink"><i data-lucide="bot"></i></div>
+                  <div>
+                    <h4 id="buddy-chat-header-name">Aura</h4>
+                    <small>Sentiment-aware Motivation Buddy</small>
+                  </div>
+                </div>
+              </div>
+              <div class="chat-messages" id="buddy-chat-messages">
+                <div class="chat-bubble bot">
+                  <p>Hey there! I am Aura, your virtual gym buddy. Tell me how you are feeling today. Tired? Excited? Ready to crush it? I'm here to support you!</p>
+                </div>
+              </div>
+              <div class="chat-suggestion-chips">
+                <button class="chip" onclick="sendBuddyPrompt('I feel too tired to work out today.')">I'm too tired</button>
+                <button class="chip" onclick="sendBuddyPrompt('Give me a motivational quote to start squats.')">Need motivation quote</button>
+                <button class="chip" onclick="sendBuddyPrompt('Help me set my workout goal!')">Set workout goal</button>
+              </div>
+              <div class="chat-input-wrapper">
+                <input type="text" id="buddy-chat-input" placeholder="Type message to Aura..." onkeypress="handleBuddyChatKeyPress(event)">
+                <button class="btn btn-pink btn-icon" id="btn-send-buddy-chat" onclick="sendBuddyChat()">
+                  <i data-lucide="send"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 6: POSE-TO-PERFORMANCE ANALYZER -->
+        <section class="tab-content hidden" id="pose-analyzer">
+          <div class="section-header">
+            <div>
+              <h2>Pose-to-Performance Analyzer</h2>
+              <p>Scores workout performance, ranges of motion, symmetry, and efficiency using motion-efficiency metrics.</p>
+            </div>
+            <button class="btn btn-red" onclick="refreshAnalyzerData()">
+              <i data-lucide="refresh-cw" class="mr-2"></i>Update Analyzer
+            </button>
+          </div>
+
+          <div class="analyzer-grid">
+            <!-- Performance Scorecards -->
+            <div class="analyzer-row-cards">
+              <div class="block-card score-stat-card">
+                <div class="score-icon color-red"><i data-lucide="gauge"></i></div>
+                <div class="score-info">
+                  <span class="label">Efficiency Score</span>
+                  <h3 id="score-efficiency">94 %</h3>
+                  <small class="trend up"><i data-lucide="trending-up"></i> +2% from last week</small>
+                </div>
+              </div>
+
+              <div class="block-card score-stat-card">
+                <div class="score-icon color-red"><i data-lucide="orbit"></i></div>
+                <div class="score-info">
+                  <span class="label">Range of Motion (ROM)</span>
+                  <h3 id="score-rom">142°</h3>
+                  <small class="trend up"><i data-lucide="trending-up"></i> Optimal angle reach</small>
+                </div>
+              </div>
+
+              <div class="block-card score-stat-card">
+                <div class="score-icon color-red"><i data-lucide="timer"></i></div>
+                <div class="score-info">
+                  <span class="label">Tempo Consistency</span>
+                  <h3 id="score-tempo">88 %</h3>
+                  <small class="trend down"><i data-lucide="trending-down"></i> -1% deviation</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Analytical Charts -->
+            <div class="analyzer-charts-container">
+              <!-- Weekly Performance Score Chart -->
+              <div class="block-card chart-card">
+                <h3>Weekly Performance Trend</h3>
+                <div class="canvas-chart-wrapper">
+                  <canvas id="performanceChart"></canvas>
+                </div>
+              </div>
+
+              <!-- Exercise Range of Motion Bar Chart -->
+              <div class="block-card chart-card">
+                <h3>Squats Knee-Angle Range (Degrees)</h3>
+                <div class="canvas-chart-wrapper">
+                  <canvas id="rangeChart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- Actionable Performance Guidance -->
+            <div class="block-card performance-guidance-box mt-4">
+              <h3><i data-lucide="zap" class="text-red mr-2"></i>AI Performance Insights</h3>
+              <ul class="insights-list">
+                <li>Your squat depth reached an optimal 142 degrees on reps 5 to 8, activating glutes and quads efficiently.</li>
+                <li>Right/left body symmetry was 98.2% aligned. No significant imbalances detected in weight distribution.</li>
+                <li>Your rep cadence was slightly fast on the descent (eccentric phase). Aim for a 2-second eccentric phase next time.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 7: GYM RECOMMENDER & PLANNER -->
+        <section class="tab-content hidden" id="recommender">
+          <div class="section-header">
+            <div>
+              <h2>Gym Recommender & Planner</h2>
+              <p>Recommends nearby fitness centers based on goals, active challenges, and schedules.</p>
+            </div>
+          </div>
+
+          <div class="recommender-grid">
+            <!-- Left: Recommendations and Active Challenges -->
+            <div class="recommender-left">
+              <!-- Search and Filter -->
+              <div class="block-card filter-card">
+                <h3>Find Gym & Programs</h3>
+                <div class="filter-controls">
+                  <div class="input-group">
+                    <label for="gym-distance">Distance Radius:</label>
+                    <select id="gym-distance" class="select-input" onchange="filterGyms()">
+                      <option value="5">Within 5 miles</option>
+                      <option value="10" selected>Within 10 miles</option>
+                      <option value="25">Within 25 miles</option>
+                    </select>
+                  </div>
+                  <div class="input-group">
+                    <label for="gym-type">Core Facility:</label>
+                    <select id="gym-type" class="select-input" onchange="filterGyms()">
+                      <option value="all">All Gyms</option>
+                      <option value="pool">Swimming Pool</option>
+                      <option value="sauna">Sauna & Spa</option>
+                      <option value="trainers">Personal Trainers</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Gym List Recommendations -->
+              <div class="gym-list-container" id="gym-list-results">
+                <!-- Gym Cards load here dynamically -->
+              </div>
+            </div>
+
+            <!-- Right: Workout Planner & Active Challenges -->
+            <div class="recommender-right">
+              <!-- Active Challenge Card -->
+              <div class="block-card challenge-card">
+                <div class="challenge-header">
+                  <span class="badge">Active Challenge</span>
+                  <h3>30-Day Squat Master Challenge</h3>
+                </div>
+                <p>Complete 50 squats daily to build endurance and leg strength. Receive virtual badges and premium rank.</p>
+                <div class="challenge-progress-section mt-4">
+                  <div class="progress-info">
+                    <span>Your Challenge Progress: 18 / 30 Days</span>
+                    <span>60%</span>
+                  </div>
+                  <div class="progress-bar-container">
+                    <div class="progress-bar-fill bg-red" style="width: 60%"></div>
+                  </div>
+                </div>
+                <div class="participants-avatars mt-4">
+                  <span class="p-text">NK + 120 others joined this week</span>
+                </div>
+              </div>
+
+              <!-- Workout Scheduler -->
+              <div class="block-card planner-card">
+                <h3>Weekly Planner</h3>
+                <p class="subtitle">Click on a day to plan your next workout program.</p>
+                <div class="planner-days">
+                  <div class="planner-day-item" onclick="togglePlannerDay('Mon')">
+                    <span class="day-name">Mon</span>
+                    <span class="day-program scheduled" id="plan-Mon">Chest & Triceps</span>
+                  </div>
+                  <div class="planner-day-item" onclick="togglePlannerDay('Tue')">
+                    <span class="day-name">Tue</span>
+                    <span class="day-program scheduled" id="plan-Tue">Legs (Squats)</span>
+                  </div>
+                  <div class="planner-day-item" onclick="togglePlannerDay('Wed')">
+                    <span class="day-name">Wed</span>
+                    <span class="day-program rest" id="plan-Wed">Rest Day</span>
+                  </div>
+                  <div class="planner-day-item" onclick="togglePlannerDay('Thu')">
+                    <span class="day-name">Thu</span>
+                    <span class="day-program scheduled" id="plan-Thu">Back & Biceps</span>
+                  </div>
+                  <div class="planner-day-item" onclick="togglePlannerDay('Fri')">
+                    <span class="day-name">Fri</span>
+                    <span class="day-program rest" id="plan-Fri">Rest Day</span>
+                  </div>
+                  <div class="planner-day-item" onclick="togglePlannerDay('Sat')">
+                    <span class="day-name">Sat</span>
+                    <span class="day-program scheduled" id="plan-Sat">HIIT Cardio</span>
+                  </div>
+                  <div class="planner-day-item" onclick="togglePlannerDay('Sun')">
+                    <span class="day-name">Sun</span>
+                    <span class="day-program rest" id="plan-Sun">Rest Day</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 8: SYSTEM ARCHITECTURE (TECH STACK) -->
+        <section class="tab-content hidden" id="architecture">
+          <div class="section-header">
+            <div>
+              <h2>System Architecture & Tech Stack</h2>
+              <p>Detailed design specifications, core module deliverables, and technical overview.</p>
+            </div>
+            <div class="architecture-status-badge">
+              <span class="status-pulse bg-green"></span>
+              <span>Architected & Verified</span>
+            </div>
+          </div>
+
+          <div class="architecture-container">
+            <!-- Objective Recap Card -->
+            <div class="block-card objective-card">
+              <h3><i data-lucide="sparkles" class="text-red mr-2"></i>Objective Recap</h3>
+              <p>To create a unified AI-powered fitness ecosystem that acts as a smart personal trainer, dietician, motivator, and data-driven fitness manager — improving user engagement, discipline, and physical performance through intelligent automation.</p>
+            </div>
+
+            <!-- System Topology Flowchart Card -->
+            <div class="block-card architecture-diagram-card mt-6">
+              <h3><i data-lucide="network" class="text-red mr-2"></i>System Topology & Data Flow</h3>
+              <p class="subtitle mb-4">Visual representation of system layers and information flow.</p>
+              
+              <div class="architecture-diagram-wrapper">
+                <!-- Node 1: Presentation Layer -->
+                <div class="diagram-node root">
+                  <i data-lucide="monitor" class="mr-2 inline-block align-middle" style="width:16px;height:16px;"></i>
+                  Presentation Layer (Frontend)
+                </div>
+                
+                <div class="diagram-arrow">▼</div>
+                
+                <!-- Node 2: Business Logic Layer -->
+                <div class="diagram-node">
+                  <i data-lucide="server" class="mr-2 inline-block align-middle" style="width:16px;height:16px;"></i>
+                  Business Logic Layer (FastAPI Backend)
+                </div>
+                
+                <!-- Branching Module Sub-Nodes -->
+                <div class="diagram-branches-container">
+                  <div class="diagram-branch-item">
+                    <div class="diagram-branch-node">Authentication Module</div>
+                  </div>
+                  <div class="diagram-branch-item">
+                    <div class="diagram-branch-node">Diet Tracking Module</div>
+                  </div>
+                  <div class="diagram-branch-item">
+                    <div class="diagram-branch-node">AI Coach Module</div>
+                  </div>
+                  <div class="diagram-branch-item">
+                    <div class="diagram-branch-node">AI Buddy Module</div>
+                  </div>
+                  <div class="diagram-branch-item">
+                    <div class="diagram-branch-node">Habit Prediction Module</div>
+                  </div>
+                </div>
+                
+                <div class="diagram-arrow">▼</div>
+                
+                <!-- Node 3: AI/ML Layer -->
+                <div class="diagram-node">
+                  <i data-lucide="brain-circuit" class="mr-2 inline-block align-middle" style="width:16px;height:16px;"></i>
+                  AI/ML Layer (scikit-learn, OpenCV, MediaPipe)
+                </div>
+                
+                <div class="diagram-arrow">▼</div>
+                
+                <!-- Node 4: Data Access Layer -->
+                <div class="diagram-node database">
+                  <i data-lucide="database" class="mr-2 inline-block align-middle" style="width:16px;height:16px;"></i>
+                  Data Access Layer (MongoDB Atlas)
+                </div>
+                
+                <div class="diagram-arrow">▼</div>
+                
+                <!-- Node 5: Storage Layer -->
+                <div class="diagram-node storage">
+                  <i data-lucide="hard-drive" class="mr-2 inline-block align-middle" style="width:16px;height:16px;"></i>
+                  Storage Layer (User Data, Diet Logs, Predictions)
+                </div>
+              </div>
+            </div>
+
+            <div class="architecture-grid mt-6">
+              <!-- Technical Stack Table Card -->
+              <div class="block-card tech-stack-card">
+                <h3><i data-lucide="cpu" class="text-red mr-2"></i>Technical Stack Layers</h3>
+                <p class="subtitle mb-4">Proposed modern software stack for production deployment.</p>
+                <div class="tech-table">
+                  <div class="tech-row header">
+                    <span class="tech-cell layer">Layer</span>
+                    <span class="tech-cell details">Technology Stack & Libraries</span>
+                  </div>
+                  
+                  <div class="tech-row">
+                    <span class="tech-cell layer">Frontend Layer</span>
+                    <span class="tech-cell details">
+                      <strong>React.js / Next.js</strong>
+                      <span class="tech-desc">User interface for login, workout tracking, diet plans.</span>
+                    </span>
+                  </div>
+                  
+                  <div class="tech-row">
+                    <span class="tech-cell layer">Backend Layer</span>
+                    <span class="tech-cell details">
+                      <strong>Python (FastAPI / Flask)</strong>
+                      <span class="tech-desc">Handles APIs, business logic, authentication.</span>
+                    </span>
+                  </div>
+                  
+                  <div class="tech-row">
+                    <span class="tech-cell layer">AI/ML Layer</span>
+                    <span class="tech-cell details">
+                      <strong>TensorFlow, PyTorch, OpenCV, MediaPipe, scikit-learn</strong>
+                      <span class="tech-desc">Workout detection, habit prediction, calorie recommendations.</span>
+                    </span>
+                  </div>
+                  
+                  <div class="tech-row">
+                    <span class="tech-cell layer">Database Layer</span>
+                    <span class="tech-cell details">
+                      <strong>MongoDB / PostgreSQL</strong>
+                      <span class="tech-desc">Stores user details, diet logs, workout history.</span>
+                    </span>
+                  </div>
+                  
+                  <div class="tech-row">
+                    <span class="tech-cell layer">IoT Layer</span>
+                    <span class="tech-cell details">
+                      <strong>MQTT / Node-RED</strong>
+                      <span class="tech-desc">Connects smart gym devices and sensors.</span>
+                    </span>
+                  </div>
+                  
+                  <div class="tech-row">
+                    <span class="tech-cell layer">Conversational AI Layer</span>
+                    <span class="tech-cell details">
+                      <strong>LLMs + NLP (Hugging Face / OpenAI APIs)</strong>
+                      <span class="tech-desc">AI Coach and AI Buddy chatbot.</span>
+                    </span>
+                  </div>
+                  
+                  <div class="tech-row">
+                    <span class="tech-cell layer">Storage Layer</span>
+                    <span class="tech-cell details">
+                      <strong>AWS S3 / Firebase</strong>
+                      <span class="tech-desc">Stores videos, reports, images, datasets.</span>
+                    </span>
+                  </div>
+                  
+                  <div class="tech-row">
+                    <span class="tech-cell layer">Analytics Layer</span>
+                    <span class="tech-cell details">
+                      <strong>Plotly / D3.js</strong>
+                      <span class="tech-desc">Generates charts, reports, progress tracking.</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Deliverables Checklist Card -->
+              <div class="block-card deliverables-card">
+                <h3><i data-lucide="clipboard-check" class="text-red mr-2"></i>Core Deliverables</h3>
+                <p class="subtitle mb-4">Milestones & system components delivered for the AI Gym Assistant.</p>
+                <div class="deliverables-list">
+                  <div class="deliv-item">
+                    <div class="deliv-checkbox checked">
+                      <i data-lucide="check"></i>
+                    </div>
+                    <div class="deliv-info">
+                      <h4>1. Fully Functional AI-based Gym & Fitness Assistant System</h4>
+                      <p>Completed client portal dashboard integrating 7 core modular features.</p>
+                    </div>
+                  </div>
+                  
+                  <div class="deliv-item">
+                    <div class="deliv-checkbox checked">
+                      <i data-lucide="check"></i>
+                    </div>
+                    <div class="deliv-info">
+                      <h4>2. Modular AI Models</h4>
+                      <p>MediaPipe form correction model, diet macro calculation engine, and behavioral risk model.</p>
+                    </div>
+                  </div>
+                  
+                  <div class="deliv-item">
+                    <div class="deliv-checkbox checked">
+                      <i data-lucide="check"></i>
+                    </div>
+                    <div class="deliv-info">
+                      <h4>3. Backend APIs & Integration Layer</h4>
+                      <p>Telemetry sync schemas and virtual coach prompt structures ready for production.</p>
+                    </div>
+                  </div>
+                  
+                  <div class="deliv-item">
+                    <div class="deliv-checkbox checked">
+                      <i data-lucide="check"></i>
+                    </div>
+                    <div class="deliv-info">
+                      <h4>4. Documentation & Verification Reports</h4>
+                      <p>Kinematic evaluation guides, range of motion charts, and habit scoring specifications.</p>
+                    </div>
+                  </div>
+                  
+                  <div class="deliv-item">
+                    <div class="deliv-checkbox checked">
+                      <i data-lucide="check"></i>
+                    </div>
+                    <div class="deliv-info">
+                      <h4>5. Final Deployment with Admin Dashboard</h4>
+                      <p>Sleek dark-themed UI dashboard representing telemetry updates and model states.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- MediaPipe Pose and Camera utilities CDN scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous"></script>
+  
+  <!-- Lucide icons CDN -->
+  <script src="https://unpkg.com/lucide@latest" crossorigin="anonymous"></script>
+  
+  <!-- App JS Core Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
