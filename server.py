@@ -249,17 +249,37 @@ async def predict_habit(inputs: HabitInput):
 @app.post("/api/ai/coach")
 async def calorie_coach_chat(req: ChatRequest):
     query = req.message.lower()
+    gemini_api_key = os.getenv("GEMINI_API_KEY")
     openai_api_key = os.getenv("OPENAI_API_KEY")
-    
-    # If API key is available, run real model. Else, fall back to NLP parsing.
+
+    async def call_gemini(prompt: str):
+        try:
+            import httpx
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={gemini_api_key}"
+            payload = {
+                "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                "generationConfig": {"maxOutputTokens": 150}
+            }
+            async with httpx.AsyncClient() as client:
+                res = await client.post(url, json=payload, timeout=5.0)
+                if res.status_code == 200:
+                    resp = res.json()
+                    return resp["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception as e:
+            print(f"[Gemini Error] {e}")
+        return None
+
+    # Primary: Gemini
+    if gemini_api_key:
+        gemini_resp = await call_gemini(req.message)
+        if gemini_resp:
+            return {"response": gemini_resp}
+
+    # Fallback: OpenAI
     if openai_api_key:
         try:
-            # We can use the official openai SDK if installed, or direct API fetch
             import httpx
-            headers = {
-                "Authorization": f"Bearer {openai_api_key}",
-                "Content-Type": "application/json"
-            }
+            headers = {"Authorization": f"Bearer {openai_api_key}", "Content-Type": "application/json"}
             payload = {
                 "model": "gpt-3.5-turbo",
                 "messages": [
@@ -275,7 +295,7 @@ async def calorie_coach_chat(req: ChatRequest):
         except Exception as e:
             print(f"[AI Chat Error] OpenAI request failed: {e}")
 
-    # Local NLP matching engine fallback
+    # Local NLP fallback
     if "breakfast" in query or "recipe" in query:
         response = (
             "<strong>High-Protein Fuel Breakfast (Local NLP Recommended):</strong><br><br>"
@@ -298,7 +318,6 @@ async def calorie_coach_chat(req: ChatRequest):
         )
     else:
         response = "NutriCoach AI: Understood! Let me know if you want a fat-loss menu, a muscle-building macro guide, or a low-carb recipe option."
-
     return {"response": response}
 
 @app.post("/api/ai/buddy")

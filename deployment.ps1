@@ -12,12 +12,16 @@ $payload = @{
     repo = 'https://github.com/nijjukrr/-AI-Gym-Fitness-Assistant.git'
     branch = 'main'
     autoDeploy = 'yes'
-    serviceDetails = {
-        webServiceDetails = {
+    serviceDetails = @{
+    env = 'python'
+    runtime = 'python'
+    envSpecificDetails = @{
+        webServiceDetails = @{
             buildCommand = 'pip install -r requirements.txt'
             startCommand = 'uvicorn server:app --host 0.0.0.0 --port $PORT'
         }
     }
+}
     envVars = @(
         @{ key = 'MONGODB_URI'; value = '' }
         @{ key = 'OPENAI_API_KEY'; value = '' }
