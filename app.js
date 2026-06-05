@@ -262,11 +262,126 @@ let poseDetector = null;
 let cameraHelper = null;
 let trainerRepCount = 0;
 let lastRepCount = 0;
-let exerciseState = "down";
+let exerciseState = "neutral";
 let currentExercise = "bicep-curl";
 let isTrainerActive = false;
 let isDemoMode = false;
 let demoAnimationId = null;
+let repMaxAngle = 0;
+let repMinAngle = 180;
+
+const EXERCISE_CONFIGS = {
+  "bicep-curl": {
+    name: "Bicep Curls",
+    startAngle: 140,
+    peakAngle: 80,
+    isFlexionFirst: true,
+    minThreshold: 60,
+    label1: "Elbow Angle:",
+    label2: "Shoulder Angle:",
+    label3: "Wrist Incline:",
+    target: "10 reps"
+  },
+  "shoulder-press": {
+    name: "Shoulder Press",
+    startAngle: 80,
+    peakAngle: 140,
+    isFlexionFirst: false,
+    minThreshold: 60,
+    label1: "Shoulder Angle:",
+    label2: "Elbow Angle:",
+    label3: "Torso Angle:",
+    target: "10 reps"
+  },
+  "lateral-raise": {
+    name: "Lateral Raises",
+    startAngle: 40,
+    peakAngle: 100,
+    isFlexionFirst: false,
+    minThreshold: 60,
+    label1: "Shoulder Angle:",
+    label2: "Elbow Angle:",
+    label3: "Torso Angle:",
+    target: "10 reps"
+  },
+  "push-up": {
+    name: "Push-Ups",
+    startAngle: 140,
+    peakAngle: 80,
+    isFlexionFirst: true,
+    minThreshold: 60,
+    label1: "Elbow Angle:",
+    label2: "Body Straightness:",
+    label3: "Wrist Incline:",
+    target: "12 reps"
+  },
+  "squat": {
+    name: "Squats",
+    startAngle: 150,
+    peakAngle: 90,
+    isFlexionFirst: true,
+    minThreshold: 60,
+    label1: "Knee Angle:",
+    label2: "Hip Angle:",
+    label3: "Back Incline:",
+    target: "12 reps"
+  },
+  "tricep-dip": {
+    name: "Tricep Dips",
+    startAngle: 140,
+    peakAngle: 80,
+    isFlexionFirst: true,
+    minThreshold: 60,
+    label1: "Elbow Angle:",
+    label2: "Shoulder Angle:",
+    label3: "Torso Incline:",
+    target: "10 reps"
+  },
+  "jumping-jack": {
+    name: "Jumping Jacks",
+    startAngle: 40,
+    peakAngle: 110,
+    isFlexionFirst: false,
+    minThreshold: 60,
+    label1: "Shoulder Angle:",
+    label2: "Foot Spread Angle:",
+    label3: "Hand Distance:",
+    target: "15 reps"
+  },
+  "lunges": {
+    name: "Lunges",
+    startAngle: 145,
+    peakAngle: 85,
+    isFlexionFirst: true,
+    minThreshold: 60,
+    label1: "Front Knee Angle:",
+    label2: "Back Knee Angle:",
+    label3: "Torso Angle:",
+    target: "10 reps (each leg)"
+  },
+  "sit-up": {
+    name: "Sit-Ups",
+    startAngle: 140,
+    peakAngle: 80,
+    isFlexionFirst: true,
+    minThreshold: 60,
+    label1: "Hip Angle:",
+    label2: "Knee Angle:",
+    label3: "Torso Angle:",
+    target: "15 reps"
+  },
+  "calf-raise": {
+    name: "Calf Raises",
+    startAngle: 95,
+    peakAngle: 155,
+    isFlexionFirst: false,
+    minThreshold: 60,
+    label1: "Ankle Angle:",
+    label2: "Knee Angle:",
+    label3: "Heel Rise:",
+    target: "15 reps"
+  }
+};
 
 function initGymTrainer() {
   const startBtn = document.getElementById("btn-start-camera");
@@ -276,11 +391,55 @@ function initGymTrainer() {
 
   if (!startBtn) return;
 
-  exerciseSelect.addEventListener("change", (e) => {
-    currentExercise = e.target.value;
-    resetTrainerStats();
-    updateTrainerLabels();
-  });
+  if (exerciseSelect) {
+    exerciseSelect.value = currentExercise;
+    exerciseSelect.addEventListener("change", (e) => {
+      currentExercise = e.target.value;
+      const exerciseLinkMap = {
+        "bicep-curl": "https://en.wikipedia.org/wiki/Bicep_curl",
+        "shoulder-press": "https://en.wikipedia.org/wiki/Overhead_press",
+        "lateral-raise": "https://en.wikipedia.org/wiki/Lateral_raise",
+        "push-up": "https://en.wikipedia.org/wiki/Push-up",
+        "squat": "https://en.wikipedia.org/wiki/Squat_(exercise)",
+        "tricep-dip": "https://en.wikipedia.org/wiki/Dip_(exercise)",
+        "jumping-jack": "https://en.wikipedia.org/wiki/Jumping_jack",
+        "lunges": "https://en.wikipedia.org/wiki/Lunge_(exercise)",
+        "sit-up": "https://en.wikipedia.org/wiki/Sit-up",
+        "calf-raise": "https://en.wikipedia.org/wiki/Calf_raises"
+      };
+      const linkElem = document.getElementById("exercise-link");
+      if (linkElem) {
+        linkElem.href = exerciseLinkMap[currentExercise] || "#";
+      }
+      updateTrainerLabels();
+      resetTrainerStats();
+      if (isTrainerActive) {
+        if (isDemoMode) {
+          startDemoTrainer();
+        } else {
+          startRealTrainer();
+        }
+      }
+    });
+  }
+
+  // Initial link load
+  const exerciseLinkMap = {
+    "bicep-curl": "https://en.wikipedia.org/wiki/Bicep_curl",
+    "shoulder-press": "https://en.wikipedia.org/wiki/Overhead_press",
+    "lateral-raise": "https://en.wikipedia.org/wiki/Lateral_raise",
+    "push-up": "https://en.wikipedia.org/wiki/Push-up",
+    "squat": "https://en.wikipedia.org/wiki/Squat_(exercise)",
+    "tricep-dip": "https://en.wikipedia.org/wiki/Dip_(exercise)",
+    "jumping-jack": "https://en.wikipedia.org/wiki/Jumping_jack",
+    "lunges": "https://en.wikipedia.org/wiki/Lunge_(exercise)",
+    "sit-up": "https://en.wikipedia.org/wiki/Sit-up",
+    "calf-raise": "https://en.wikipedia.org/wiki/Calf_raises"
+  };
+  const linkElem = document.getElementById("exercise-link");
+  if (linkElem) {
+    linkElem.href = exerciseLinkMap[currentExercise] || "#";
+  }
 
   startBtn.addEventListener("click", startRealTrainer);
   stopBtn.addEventListener("click", stopTrainer);
@@ -290,18 +449,26 @@ function initGymTrainer() {
 function resetTrainerStats() {
   trainerRepCount = 0;
   lastRepCount = 0;
+  exerciseState = "neutral";
+  repMaxAngle = 0;
+  repMinAngle = 180;
+  
   document.getElementById("trainer-rep-count").innerText = "0";
   document.getElementById("trainer-rep-progress").style.width = "0%";
   
   document.getElementById("dash-trainer-reps").innerText = "0 Reps";
   
   const feedbackLogs = document.getElementById("feedback-logs");
-  feedbackLogs.innerHTML = `
-    <div class="feedback-item info">
-      <span class="time">00:00</span>
-      <span class="msg">Session reset. Ready for ${currentExercise === "squat" ? "Squats" : "Bicep Curls"}.</span>
-    </div>
-  `;
+  if (feedbackLogs) {
+    const config = EXERCISE_CONFIGS[currentExercise];
+    const exName = config ? config.name : "Exercises";
+    feedbackLogs.innerHTML = `
+      <div class="feedback-item info">
+        <span class="time">00:00</span>
+        <span class="msg">Session reset. Ready for ${exName}.</span>
+      </div>
+    `;
+  }
 }
 
 function updateTrainerLabels() {
@@ -310,25 +477,107 @@ function updateTrainerLabels() {
   const angle2Name = document.getElementById("angle-2-name");
   const angle3Name = document.getElementById("angle-3-name");
 
-  if (currentExercise === "squat") {
-    targetLabel.innerText = "12 reps";
-    angle1Name.innerText = "Knee Angle:";
-    angle2Name.innerText = "Hip Angle:";
-    angle3Name.innerText = "Back Incline:";
-  } else {
-    targetLabel.innerText = "10 reps";
-    angle1Name.innerText = "Elbow Angle:";
-    angle2Name.innerText = "Shoulder Angle:";
-    angle3Name.innerText = "Wrist Incline:";
+  const config = EXERCISE_CONFIGS[currentExercise];
+  if (config) {
+    if (targetLabel) targetLabel.innerText = config.target;
+    if (angle1Name) angle1Name.innerText = config.label1;
+    if (angle2Name) angle2Name.innerText = config.label2;
+    if (angle3Name) angle3Name.innerText = config.label3;
   }
 }
 
 function speakFeedback(text) {
   if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.1;
+    utterance.rate = 1.4;
     utterance.volume = 0.9;
     window.speechSynthesis.speak(utterance);
+  }
+}
+
+function speakRepCount(count) {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(count.toString());
+    utterance.rate = 1.6;
+    utterance.volume = 1.0;
+    window.speechSynthesis.speak(utterance);
+  }
+}
+
+function trackRepCountState(currentAngle) {
+  const config = EXERCISE_CONFIGS[currentExercise];
+  if (!config) return;
+
+  repMinAngle = Math.min(repMinAngle, currentAngle);
+  repMaxAngle = Math.max(repMaxAngle, currentAngle);
+
+  if (exerciseState === "neutral") {
+    if (config.isFlexionFirst) {
+      if (currentAngle >= config.startAngle) {
+        exerciseState = "start";
+        repMinAngle = currentAngle;
+        repMaxAngle = currentAngle;
+      }
+    } else {
+      if (currentAngle <= config.startAngle) {
+        exerciseState = "start";
+        repMinAngle = currentAngle;
+        repMaxAngle = currentAngle;
+      }
+    }
+    return;
+  }
+
+  if (exerciseState === "start") {
+    if (config.isFlexionFirst) {
+      if (currentAngle <= config.peakAngle) {
+        const range = repMaxAngle - currentAngle;
+        if (range >= 60) {
+          exerciseState = "peak";
+          repMinAngle = currentAngle;
+          repMaxAngle = currentAngle;
+          addFeedbackLog("Peak contraction reached, now return.", "info");
+        }
+      }
+    } else {
+      if (currentAngle >= config.peakAngle) {
+        const range = currentAngle - repMinAngle;
+        if (range >= 60) {
+          exerciseState = "peak";
+          repMinAngle = currentAngle;
+          repMaxAngle = currentAngle;
+          addFeedbackLog("Peak extension reached, now return.", "info");
+        }
+      }
+    }
+  } else if (exerciseState === "peak") {
+    if (config.isFlexionFirst) {
+      if (currentAngle >= config.startAngle) {
+        const range = currentAngle - repMinAngle;
+        if (range >= 60) {
+          trainerRepCount++;
+          exerciseState = "start";
+          repMinAngle = currentAngle;
+          repMaxAngle = currentAngle;
+          addFeedbackLog(`Rep ${trainerRepCount} complete!`, "success");
+          speakRepCount(trainerRepCount);
+        }
+      }
+    } else {
+      if (currentAngle <= config.startAngle) {
+        const range = repMaxAngle - currentAngle;
+        if (range >= 60) {
+          trainerRepCount++;
+          exerciseState = "start";
+          repMinAngle = currentAngle;
+          repMaxAngle = currentAngle;
+          addFeedbackLog(`Rep ${trainerRepCount} complete!`, "success");
+          speakRepCount(trainerRepCount);
+        }
+      }
+    }
   }
 }
 
@@ -362,7 +611,10 @@ function addFeedbackLog(message, type = "info") {
     }
     
     bubble.classList.remove("hidden");
-    speakFeedback(message);
+    
+    if (type === "warn") {
+      speakFeedback(message);
+    }
     
     setTimeout(() => {
       bubble.classList.add("hidden");
@@ -414,76 +666,249 @@ function startDemoTrainer() {
     frameCount++;
     const speedCoeff = 0.025;
     const cycle = (frameCount * speedCoeff) % (2 * Math.PI);
+    const amount = (Math.sin(cycle - Math.PI/2) + 1) / 2;
     
     let hipX = 320, hipY = 220;
     let shoulderX = 320, shoulderY = 130;
-    let elbowX = 360, elbowY = 130;
-    let wristX = 380, wristY = 150;
+    let elbowX = 340, elbowY = 180;
+    let wristX = 340, wristY = 230;
     let kneeX = 320, kneeY = 320;
     let ankleX = 320, ankleY = 410;
     let headX = 320, headY = 90;
 
+    let leftShoulderX = 320, leftShoulderY = 130;
+    let leftElbowX = 300, leftElbowY = 180;
+    let leftWristX = 300, leftWristY = 230;
+    let leftHipX = 320, leftHipY = 220;
+    let leftKneeX = 320, leftKneeY = 320;
+    let leftAnkleX = 320, leftAnkleY = 410;
+
     let angle1 = 0, angle2 = 0, angle3 = 0;
 
     if (currentExercise === "bicep-curl") {
-      const curlAmount = (Math.sin(cycle - Math.PI/2) + 1) / 2;
       elbowX = 345;
       elbowY = 190;
       
       const wristRadius = 70;
       const startWristAngle = Math.PI * 0.45;
       const endWristAngle = -Math.PI * 0.45;
-      const currentWristAngle = startWristAngle - curlAmount * (startWristAngle - endWristAngle);
+      const currentWristAngle = startWristAngle - amount * (startWristAngle - endWristAngle);
       
       wristX = elbowX + wristRadius * Math.cos(currentWristAngle);
       wristY = elbowY + wristRadius * Math.sin(currentWristAngle);
       
-      angle1 = Math.round((startWristAngle - currentWristAngle) * (180 / Math.PI));
-      angle1 = 180 - angle1;
-      
-      angle2 = 12 + Math.round(Math.sin(cycle) * 5);
-      angle3 = Math.round(currentWristAngle * (180/Math.PI));
-      
-      if (angle1 < 50 && exerciseState === "down") {
-        exerciseState = "up";
-      } else if (angle1 > 150 && exerciseState === "up") {
-        exerciseState = "down";
-        trainerRepCount++;
-        addFeedbackLog(`Rep ${trainerRepCount} complete! Perfect range of motion.`, "success");
-      }
-      
+      angle1 = 160 - Math.round(amount * 120);
+      angle2 = 15;
+      angle3 = 10;
+
       if (frameCount % 240 === 180 && Math.random() > 0.5) {
         addFeedbackLog("Avoid swinging your upper arm!", "warn");
       }
 
+    } else if (currentExercise === "shoulder-press") {
+      elbowX = 355 - amount * 15;
+      elbowY = 160 - amount * 60;
+      wristX = 355 - amount * 15;
+      wristY = 120 - amount * 70;
+      
+      angle1 = 60 + Math.round(amount * 100);
+      angle2 = 45 + Math.round(amount * 90);
+      angle3 = 175;
+
+      if (frameCount % 240 === 180 && Math.random() > 0.5) {
+        addFeedbackLog("Extend your arms fully overhead!", "warn");
+      }
+
+    } else if (currentExercise === "lateral-raise") {
+      const elbowAngle = Math.PI/2 - amount * Math.PI/2;
+      elbowX = shoulderX + 70 * Math.cos(elbowAngle);
+      elbowY = shoulderY + 70 * Math.sin(elbowAngle);
+      wristX = elbowX + 60 * Math.cos(elbowAngle);
+      wristY = elbowY + 60 * Math.sin(elbowAngle);
+      
+      angle1 = 20 + Math.round(amount * 70);
+      angle2 = 160;
+      angle3 = 175;
+
+      if (frameCount % 240 === 180 && Math.random() > 0.5) {
+        addFeedbackLog("Keep your elbows slightly bent!", "warn");
+      }
+
+    } else if (currentExercise === "push-up") {
+      ankleX = 460; ankleY = 380;
+      leftAnkleX = 460; leftAnkleY = 380;
+      wristX = 250; wristY = 380;
+      
+      const pushupY = 360 - amount * 60;
+      const pushupX = 250 - amount * 10;
+      
+      shoulderX = pushupX;
+      shoulderY = pushupY;
+      headX = shoulderX - 40;
+      headY = shoulderY - 20;
+      
+      hipX = shoulderX + 70;
+      hipY = shoulderY + 20;
+      kneeX = hipX + 60;
+      kneeY = hipY + 20;
+      
+      elbowX = shoulderX + 20;
+      elbowY = shoulderY + 40 - amount * 20;
+      
+      angle1 = 70 + Math.round(amount * 90);
+      angle2 = 175;
+      angle3 = 5;
+
+      if (frameCount % 240 === 180 && Math.random() > 0.5) {
+        addFeedbackLog("Keep your core tight and body straight!", "warn");
+      }
+
     } else if (currentExercise === "squat") {
-      const squatAmount = (Math.sin(cycle - Math.PI/2) + 1) / 2;
       ankleX = 320;
       ankleY = 410;
-      kneeX = 300 - squatAmount * 25;
-      kneeY = 320;
-      hipX = 330 - squatAmount * 40;
-      hipY = 220 + squatAmount * 70;
+      kneeX = 300 - amount * 25;
+      kneeY = 320 + amount * 30;
+      hipX = 340 - amount * 40;
+      hipY = 220 + amount * 80;
       shoulderX = hipX;
       shoulderY = hipY - 90;
       headX = shoulderX + 5;
       headY = shoulderY - 35;
       
-      angle1 = 175 - Math.round(squatAmount * 95);
-      angle2 = 150 - Math.round(squatAmount * 70);
-      angle3 = Math.round(squatAmount * 15);
+      elbowX = shoulderX + 30;
+      elbowY = shoulderY;
+      wristX = elbowX + 40;
+      wristY = elbowY;
       
-      if (angle1 < 95 && exerciseState === "up") {
-        exerciseState = "down";
-      } else if (angle1 > 165 && exerciseState === "down") {
-        exerciseState = "up";
-        trainerRepCount++;
-        addFeedbackLog(`Rep ${trainerRepCount} complete! Excellent depth.`, "success");
-      }
-      
+      angle1 = 170 - Math.round(amount * 90);
+      angle2 = 165 - Math.round(amount * 95);
+      angle3 = 10 + Math.round(amount * 35);
+
       if (frameCount % 250 === 120 && Math.random() > 0.6) {
         addFeedbackLog("Keep chest lifted, don't bend forward too much!", "warn");
       }
+
+    } else if (currentExercise === "tricep-dip") {
+      wristX = 350; wristY = 300;
+      ankleX = 270; ankleY = 410;
+      
+      hipX = 320;
+      hipY = 320 - amount * 60;
+      shoulderX = 320;
+      shoulderY = hipY - 90;
+      headX = 320;
+      headY = shoulderY - 35;
+      
+      kneeX = 270;
+      kneeY = 340 - amount * 20;
+      
+      elbowX = 355 + (1 - amount) * 20;
+      elbowY = shoulderY + 40;
+      
+      angle1 = 80 + Math.round(amount * 80);
+      angle2 = 25 + Math.round(amount * 45);
+      angle3 = 175;
+
+      if (frameCount % 240 === 180 && Math.random() > 0.5) {
+        addFeedbackLog("Keep your back close to the bench!", "warn");
+      }
+
+    } else if (currentExercise === "jumping-jack") {
+      headX = 320;
+      headY = 90 - amount * 10;
+      shoulderX = 320;
+      shoulderY = 130 - amount * 10;
+      hipX = 320;
+      hipY = 220 - amount * 10;
+      
+      ankleX = 320 + amount * 40;
+      ankleY = 410;
+      leftAnkleX = 320 - amount * 40;
+      leftAnkleY = 410;
+      
+      kneeX = 320 + amount * 25;
+      kneeY = 320 - amount * 10;
+      leftKneeX = 320 - amount * 25;
+      leftKneeY = 320 - amount * 10;
+      
+      elbowX = shoulderX + 40 * Math.sin(amount * Math.PI * 0.8);
+      elbowY = shoulderY + 40 * Math.cos(amount * Math.PI * 0.8);
+      wristX = shoulderX + 80 * Math.sin(amount * Math.PI * 0.8);
+      wristY = shoulderY + 80 * Math.cos(amount * Math.PI * 0.8);
+      
+      leftElbowX = shoulderX - 40 * Math.sin(amount * Math.PI * 0.8);
+      leftElbowY = shoulderY + 40 * Math.cos(amount * Math.PI * 0.8);
+      leftWristX = shoulderX - 80 * Math.sin(amount * Math.PI * 0.8);
+      leftWristY = shoulderY + 80 * Math.cos(amount * Math.PI * 0.8);
+      
+      angle1 = 20 + Math.round(amount * 120);
+      angle2 = 10 + Math.round(amount * 30);
+      angle3 = Math.round(Math.hypot(wristX - leftWristX, wristY - leftWristY));
+
+    } else if (currentExercise === "lunges") {
+      ankleX = 260; ankleY = 410;
+      leftAnkleX = 380; leftAnkleY = 410;
+      
+      kneeX = 260 + (1 - amount) * 20;
+      kneeY = 360 + amount * 25;
+      leftKneeX = 360;
+      leftKneeY = 360;
+      
+      hipX = 320 - (1 - amount) * 20;
+      hipY = 220 + amount * 80;
+      
+      shoulderX = hipX;
+      shoulderY = hipY - 90;
+      headX = shoulderX;
+      headY = shoulderY - 35;
+      
+      angle1 = 165 - Math.round(amount * 75);
+      angle2 = 165 - Math.round(amount * 85);
+      angle3 = 175;
+
+      if (frameCount % 240 === 180 && Math.random() > 0.5) {
+        addFeedbackLog("Keep your torso upright!", "warn");
+      }
+
+    } else if (currentExercise === "sit-up") {
+      hipX = 320; hipY = 380;
+      kneeX = 260; kneeY = 380;
+      ankleX = 220; ankleY = 410;
+      
+      shoulderX = 400 - amount * 110;
+      shoulderY = 380 - amount * 80;
+      headX = shoulderX + 30 * (1 - amount) - 10 * amount;
+      headY = shoulderY - 30;
+      
+      elbowX = shoulderX - 20;
+      elbowY = shoulderY + 20;
+      wristX = 260;
+      wristY = 380;
+      
+      angle1 = 150 - Math.round(amount * 90);
+      angle2 = 120;
+      angle3 = 10;
+
+    } else if (currentExercise === "calf-raise") {
+      ankleX = 320;
+      ankleY = 410 - amount * 25;
+      kneeX = 320;
+      kneeY = 320 - amount * 25;
+      hipX = 320;
+      hipY = 220 - amount * 25;
+      shoulderX = 320;
+      shoulderY = 130 - amount * 25;
+      headX = 320;
+      headY = 90 - amount * 25;
+      
+      elbowX = 340;
+      elbowY = 180 - amount * 25;
+      wristX = 340;
+      wristY = 230 - amount * 25;
+      
+      angle1 = 95 + Math.round(amount * 60);
+      angle2 = 180;
+      angle3 = Math.round(amount * 25);
     }
 
     // Draw Skeleton using RED accents
@@ -513,6 +938,20 @@ function startDemoTrainer() {
     ctx.arc(headX, headY, 18, 0, Math.PI * 2);
     ctx.fill();
 
+    if (currentExercise === "jumping-jack") {
+      ctx.beginPath();
+      ctx.moveTo(shoulderX, shoulderY);
+      ctx.lineTo(leftElbowX, leftElbowY);
+      ctx.lineTo(leftWristX, leftWristY);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(hipX, hipY);
+      ctx.lineTo(leftKneeX, leftKneeY);
+      ctx.lineTo(leftAnkleX, leftAnkleY);
+      ctx.stroke();
+    }
+
     const joints = [
       {x: shoulderX, y: shoulderY},
       {x: elbowX, y: elbowY},
@@ -537,9 +976,13 @@ function startDemoTrainer() {
     document.getElementById("angle-1-val").innerText = `${angle1}°`;
     document.getElementById("angle-2-val").innerText = `${angle2}°`;
     document.getElementById("angle-3-val").innerText = `${angle3}°`;
+    
+    // Process the rep count using our unified state machine
+    trackRepCountState(angle1);
+
     document.getElementById("trainer-rep-count").innerText = trainerRepCount;
     
-    const targetReps = currentExercise === "squat" ? 12 : 10;
+    const targetReps = currentExercise === "squat" ? 12 : (currentExercise === "jumping-jack" || currentExercise === "calf-raise" || currentExercise === "sit-up" ? 15 : 10);
     const progressPercent = Math.min((trainerRepCount / targetReps) * 100, 100);
     document.getElementById("trainer-rep-progress").style.width = `${progressPercent}%`;
     
@@ -750,43 +1193,83 @@ function drawRealPoseSkeleton(results, canvas, ctx) {
     angle1 = findAngle(points.rShoulder.x, points.rShoulder.y, points.rElbow.x, points.rElbow.y, points.rWrist.x, points.rWrist.y);
     angle2 = findAngle(points.rHip.x, points.rHip.y, points.rShoulder.x, points.rShoulder.y, points.rElbow.x, points.rElbow.y);
     angle3 = Math.round(Math.abs(points.rWrist.y - points.rElbow.y));
-
-    if (angle1 < 45 && exerciseState === "down") {
-      exerciseState = "up";
-    } else if (angle1 > 150 && exerciseState === "up") {
-      exerciseState = "down";
-      trainerRepCount++;
-      addFeedbackLog(`Rep ${trainerRepCount} complete! Nice form.`, "success");
-    }
-
-    if (angle2 > 35 && exerciseState === "up") {
+    
+    if (angle2 > 35) {
       addFeedbackLog("Tuck your elbow in close to your ribs!", "warn");
     }
-
+  } else if (currentExercise === "shoulder-press") {
+    angle1 = findAngle(points.rShoulder.x, points.rShoulder.y, points.rElbow.x, points.rElbow.y, points.rWrist.x, points.rWrist.y);
+    angle2 = findAngle(points.rElbow.x, points.rElbow.y, points.rShoulder.x, points.rShoulder.y, points.rHip.x, points.rHip.y);
+    angle3 = findAngle(points.rShoulder.x, points.rShoulder.y, points.rHip.x, points.rHip.y, points.rAnkle.x, points.rAnkle.y);
+    
+    if (angle3 < 160) {
+      addFeedbackLog("Keep your torso upright and core engaged!", "warn");
+    }
+  } else if (currentExercise === "lateral-raise") {
+    angle1 = findAngle(points.rElbow.x, points.rElbow.y, points.rShoulder.x, points.rShoulder.y, points.rHip.x, points.rHip.y);
+    angle2 = findAngle(points.rShoulder.x, points.rShoulder.y, points.rElbow.x, points.rElbow.y, points.rWrist.x, points.rWrist.y);
+    angle3 = findAngle(points.rShoulder.x, points.rShoulder.y, points.rHip.x, points.rHip.y, points.rAnkle.x, points.rAnkle.y);
+    
+    if (angle2 < 140) {
+      addFeedbackLog("Keep your arms relatively straight!", "warn");
+    }
+  } else if (currentExercise === "push-up") {
+    angle1 = findAngle(points.rShoulder.x, points.rShoulder.y, points.rElbow.x, points.rElbow.y, points.rWrist.x, points.rWrist.y);
+    angle2 = findAngle(points.rShoulder.x, points.rShoulder.y, points.rHip.x, points.rHip.y, points.rAnkle.x, points.rAnkle.y);
+    angle3 = Math.round(Math.abs(points.rWrist.y - points.rElbow.y));
+    
+    if (angle2 < 155) {
+      addFeedbackLog("Keep your body straight during push-ups!", "warn");
+    }
   } else if (currentExercise === "squat") {
     angle1 = findAngle(points.rHip.x, points.rHip.y, points.rKnee.x, points.rKnee.y, points.rAnkle.x, points.rAnkle.y);
     angle2 = findAngle(points.rShoulder.x, points.rShoulder.y, points.rHip.x, points.rHip.y, points.rKnee.x, points.rKnee.y);
     angle3 = Math.round(Math.abs(findAngle(points.rShoulder.x, points.rShoulder.y, points.rHip.x, points.rHip.y, points.rHip.x, points.rHip.y - 100)));
-
-    if (angle1 < 100 && exerciseState === "up") {
-      exerciseState = "down";
-    } else if (angle1 > 160 && exerciseState === "down") {
-      exerciseState = "up";
-      trainerRepCount++;
-      addFeedbackLog(`Rep ${trainerRepCount} complete! Full range reached.`, "success");
-    }
-
-    if (angle3 > 45 && exerciseState === "down") {
+    
+    if (angle3 > 45) {
       addFeedbackLog("Keep your chest up and back flat!", "warn");
     }
+  } else if (currentExercise === "tricep-dip") {
+    angle1 = findAngle(points.rShoulder.x, points.rShoulder.y, points.rElbow.x, points.rElbow.y, points.rWrist.x, points.rWrist.y);
+    angle2 = findAngle(points.rElbow.x, points.rElbow.y, points.rShoulder.x, points.rShoulder.y, points.rHip.x, points.rHip.y);
+    angle3 = findAngle(points.rShoulder.x, points.rShoulder.y, points.rHip.x, points.rHip.y, points.rAnkle.x, points.rAnkle.y);
+    
+    if (angle3 < 150) {
+      addFeedbackLog("Keep your torso close to the bench!", "warn");
+    }
+  } else if (currentExercise === "jumping-jack") {
+    angle1 = findAngle(points.rElbow.x, points.rElbow.y, points.rShoulder.x, points.rShoulder.y, points.rHip.x, points.rHip.y);
+    angle2 = findAngle(points.lAnkle.x, points.lAnkle.y, points.rHip.x, points.rHip.y, points.rAnkle.x, points.rAnkle.y);
+    angle3 = Math.round(Math.hypot(points.rWrist.x - points.lWrist.x, points.rWrist.y - points.lWrist.y));
+  } else if (currentExercise === "lunges") {
+    angle1 = findAngle(points.rHip.x, points.rHip.y, points.rKnee.x, points.rKnee.y, points.rAnkle.x, points.rAnkle.y);
+    angle2 = findAngle(points.lHip.x, points.lHip.y, points.lKnee.x, points.lKnee.y, points.lAnkle.x, points.lAnkle.y);
+    angle3 = findAngle(points.rShoulder.x, points.rShoulder.y, points.rHip.x, points.rHip.y, points.rKnee.x, points.rKnee.y);
+    
+    if (angle3 < 100) {
+      addFeedbackLog("Keep your torso upright!", "warn");
+    }
+  } else if (currentExercise === "sit-up") {
+    angle1 = findAngle(points.rShoulder.x, points.rShoulder.y, points.rHip.x, points.rHip.y, points.rKnee.x, points.rKnee.y);
+    angle2 = findAngle(points.rHip.x, points.rHip.y, points.rKnee.x, points.rKnee.y, points.rAnkle.x, points.rAnkle.y);
+    angle3 = findAngle(points.rShoulder.x, points.rShoulder.y, points.rHip.x, points.rHip.y, points.rAnkle.x, points.rAnkle.y);
+  } else if (currentExercise === "calf-raise") {
+    points.rToe = {x: lm[32].x * canvas.width, y: lm[32].y * canvas.height};
+    points.rHeel = {x: lm[30].x * canvas.width, y: lm[30].y * canvas.height};
+    const baseAngle = findAngle(points.rKnee.x, points.rKnee.y, points.rAnkle.x, points.rAnkle.y, points.rToe.x, points.rToe.y);
+    angle1 = Math.round(95 + Math.max(0, baseAngle - 95) * 2.0);
+    angle2 = findAngle(points.rHip.x, points.rHip.y, points.rKnee.x, points.rKnee.y, points.rAnkle.x, points.rAnkle.y);
+    angle3 = Math.round(Math.abs(points.rAnkle.y - points.rHeel.y));
   }
+
+  trackRepCountState(angle1);
 
   document.getElementById("angle-1-val").innerText = `${angle1}°`;
   document.getElementById("angle-2-val").innerText = `${angle2}°`;
   document.getElementById("angle-3-val").innerText = `${angle3}°`;
   document.getElementById("trainer-rep-count").innerText = trainerRepCount;
   
-  const targetReps = currentExercise === "squat" ? 12 : 10;
+  const targetReps = currentExercise === "squat" ? 12 : (currentExercise === "jumping-jack" || currentExercise === "calf-raise" || currentExercise === "sit-up" ? 15 : 10);
   const progressPercent = Math.min((trainerRepCount / targetReps) * 100, 100);
   document.getElementById("trainer-rep-progress").style.width = `${progressPercent}%`;
   
