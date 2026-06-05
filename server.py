@@ -401,7 +401,75 @@ async def iot_sensor_feed(websocket: WebSocket):
         print("[IoT Sensor Hub] Client disconnected from WebSocket telemetry stream.")
     except Exception as e:
         print(f"[IoT Sensor Hub Error] WebSocket error: {e}")
+# ----------------------------------------------------
+# ADMIN ROUTES AND ANALYTICS
+# ----------------------------------------------------
 
+def _get_collection(name: str):
+    if db is not None:
+        return db[name]
+    else:
+        return in_memory_db[name]
+
+admin_router = None  # placeholder to avoid lint errors
+
+@app.get("/api/admin/stats")
+async def get_admin_stats():
+    # Users count
+    users = _get_collection("users")
+    total_users = users.count_documents({}) if db else len(users)
+    # Workouts count
+    workouts = _get_collection("workouts")
+    total_workouts = workouts.count_documents({}) if db else len(workouts)
+    # Calories logged
+    calories = _get_collection("calories")
+    if db:
+        total_calories = sum(doc.get("kcal", 0) for doc in calories.find({}))
+    else:
+        total_calories = sum(item.get("kcal", 0) for item in calories)
+    # Habit completion percentage (completed if calculated_risk <= 25)
+    habits = _get_collection("habits")
+    if db:
+        habit_docs = list(habits.find({}))
+    else:
+        habit_docs = habits
+    total_habits = len(habit_docs)
+    completed = sum(1 for h in habit_docs if h.get("calculated_risk", 0) <= 25)
+    habit_completion = (completed / total_habits * 100) if total_habits > 0 else 0
+    return {
+        "total_users": total_users,
+        "total_workouts": total_workouts,
+        "total_calories": total_calories,
+        "habit_completion_percentage": round(habit_completion, 2)
+    }
+
+@app.get("/api/admin/users")
+async def get_admin_users():
+    users = _get_collection("users")
+    if db:
+        return list(users.find({}, {"_id": 0}))
+    else:
+        return users
+
+@app.get("/api/admin/workouts")
+async def get_admin_workouts():
+    workouts = _get_collection("workouts")
+    if db:
+        return list(workouts.find({}, {"_id": 0}))
+    else:
+        return workouts
+
+@app.get("/api/admin/habits")
+async def get_admin_habits():
+    habits = _get_collection("habits")
+    if db:
+        return list(habits.find({}, {"_id": 0}))
+    else:
+        return habits
+
+# ----------------------------------------------------
+# RUN SERVER
+# ----------------------------------------------------
 # ----------------------------------------------------
 # RUN SERVER
 # ----------------------------------------------------

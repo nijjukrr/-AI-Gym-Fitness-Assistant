@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Gym Admin Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+            --bg-primary: hsl(210, 20%, 12%);
+            --bg-card: hsl(210, 20%, 18%);
+            --text-primary: hsl(0, 0%, 95%);
+            --accent: hsl(174, 70%, 45%);
+            --accent-hover: hsl(174, 70%, 55%);
+            --border-radius: 0.75rem;
+            --shadow: 0 4px 12px rgba(0,0,0,0.25);
+            --transition: all 0.2s ease-in-out;
+        }
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        h1 {
+            font-size: 2.2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.5rem;
+        }
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+        }
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            color: var(--accent);
+        }
+        .card p {
+            margin: 0.5rem 0 0;
+            font-size: 1.6rem;
+            font-weight: 600;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+        }
+        th {
+            background: var(--accent);
+            color: #fff;
+        }
+        tr:nth-child(even) {background: rgba(255,255,255,0.02);}
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+        a:hover {color: var(--accent-hover);}
+        @media (max-width: 600px) {
+            h1 {font-size: 1.8rem;}
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Gym Admin Dashboard</h1>
+        <div class="grid">
+            <div class="card">
+                <h2>Total Users</h2>
+                <p id="total-users">--</p>
+            </div>
+            <div class="card">
+                <h2>Total Workouts</h2>
+                <p id="total-workouts">--</p>
+            </div>
+            <div class="card">
+                <h2>Total Calories Logged</h2>
+                <p id="total-calories">--</p>
+            </div>
+            <div class="card">
+                <h2>Habit Completion %</h2>
+                <p id="habit-completion">--</p>
+            </div>
+        </div>
+        <section style="margin-top:2rem;">
+            <h2>Recent Activity</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Details</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody id="recent-activity">
+                    <tr><td colspan="3" style="text-align:center;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+    <script>
+        const apiBase = '/api/admin';
+        async function loadStats(){
+            const res = await fetch(`${apiBase}/stats`);
+            const data = await res.json();
+            document.getElementById('total-users').textContent = data.total_users;
+            document.getElementById('total-workouts').textContent = data.total_workouts;
+            document.getElementById('total-calories').textContent = data.total_calories;
+            document.getElementById('habit-completion').textContent = data.habit_completion_percentage + '%';
+        }
+        async function loadRecent(){
+            const [usersRes, workoutsRes, habitsRes] = await Promise.all([
+                fetch(`${apiBase}/users`),
+                fetch(`${apiBase}/workouts`),
+                fetch(`${apiBase}/habits`)
+            ]);
+            const [users, workouts, habits] = await Promise.all([usersRes.json(), workoutsRes.json(), habitsRes.json()]);
+            const recent = [];
+            users.slice(-3).forEach(u=> recent.push({type:'User', detail:`${u.email || 'N/A'}`, ts:u.timestamp||'--'}));
+            workouts.slice(-3).forEach(w=> recent.push({type:'Workout', detail:`${w.exercise} ×${w.reps}`, ts:w.timestamp||'--'}));
+            habits.slice(-3).forEach(h=> recent.push({type:'Habit', detail:`Risk ${h.calculated_risk}%`, ts:h.timestamp||'--'}));
+            recent.sort((a,b)=> new Date(b.ts) - new Date(a.ts));
+            const tbody = document.getElementById('recent-activity');
+            tbody.innerHTML = recent.map(r=> `<tr><td>${r.type}</td><td>${r.detail}</td><td>${r.ts}</td></tr>`).join('') || `<tr><td colspan="3" style="text-align:center;">No activity yet</td></tr>`;
+        }
+        loadStats();
+        loadRecent();
+    </script>
+</body>
+</html>

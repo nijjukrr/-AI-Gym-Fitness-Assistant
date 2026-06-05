@@ -50,8 +50,33 @@ The platform is organized into **7 core intelligent modules** accessible from a 
 ## 🏗️ Technical Stack
 
 - **Frontend**: Standard HTML5 (semantic layout), Vanilla CSS3 (custom glassmorphism, responsive styles, smooth animations), Javascript (ES6, Lucide icons, MediaPipe Pose CDN, canvas renders).
-- **Backend**: Python Flask (`server.py`), `pymongo` (MongoDB Atlas logs database Integration), `scikit-learn` (behavioral prediction model), `python-dotenv`.
+  - **Backend**: Python FastAPI (`server.py`), `pymongo` (MongoDB Atlas logs database Integration), `scikit-learn` (behavioral prediction model), `python-dotenv`, `httpx`.
 - **Database**: MongoDB Atlas (tracks workout logs, user telemetry, and consistency history).
+
+### 2. Backend Installation & Start
+1. Navigate to the project directory:
+   ```bash
+   cd "ai gym"
+   ```
+2. Install Python dependencies:
+   ```bash
+   pip install fastapi uvicorn pymongo python-dotenv scikit-learn httpx
+   ```
+3. Set up your environment variables:
+   - Copy `.env.example` into a new file named `.env`:
+     ```bash
+     cp .env.example .env
+     ```
+   - Edit `.env` and fill in your actual **MongoDB Atlas connection URI** and **OpenAI API key**:
+     ```env
+     MONGODB_URI=mongodb+srv://your_username:your_password@cluster0.nxw4ute.mongodb.net/your_db
+     OPENAI_API_KEY=your_openai_api_key
+     ```
+4. Start the backend FastAPI server:
+   ```bash
+   uvicorn server:app --host 0.0.0.0 --port 8000 --reload
+   ```
+   The backend will start running on `http://localhost:8000`.
 
 ---
 
@@ -70,7 +95,7 @@ Ensure you have the following installed on your system:
    ```
 2. Install Python dependencies:
    ```bash
-   pip install flask flask-cors pymongo scikit-learn python-dotenv
+   pip install fastapi uvicorn pymongo python-dotenv scikit-learn httpx
    ```
 3. Set up your environment variables:
    - Copy `.env.example` into a new file named `.env`:
