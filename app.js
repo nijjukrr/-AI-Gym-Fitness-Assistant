@@ -81,11 +81,11 @@ function startGmailVerification() {
   const passwordInput = document.getElementById("login-password");
   
   if (!emailInput.checkValidity() || !emailInput.value) {
-    alert("Please enter a valid Gmail address.");
+    showAppNotification("Please enter a valid Gmail address.", "warning");
     return;
   }
   if (!passwordInput.value || passwordInput.value.length < 4) {
-    alert("Please enter a password (minimum 4 characters).");
+    showAppNotification("Please enter a password (minimum 4 characters).", "warning");
     return;
   }
 
@@ -132,7 +132,7 @@ function handleLoginSubmit(event) {
     // Transition UI
     checkAuthState();
   } else {
-    alert("Invalid verification code. Please check the code and try again.");
+    showAppNotification("Invalid verification code. Please check the code and try again.", "warning");
   }
 }
 
@@ -1573,10 +1573,8 @@ function initHeaderInteractions() {
           targetTab = "pose-analyzer";
         } else if (query.includes("recommender") || query.includes("challenge") || query.includes("plan") || query.includes("near") || query.includes("program")) {
           targetTab = "recommender";
-        } else if (query.includes("architecture") || query.includes("tech") || query.includes("layer") || query.includes("flow") || query.includes("module") || query.includes("diagram") || query.includes("system")) {
-          targetTab = "architecture";
         }
-
+        
         if (targetTab) {
           // Trigger tab click manually or route
           const menuItems = document.querySelectorAll(".menu-item");
@@ -1589,7 +1587,7 @@ function initHeaderInteractions() {
             }
           });
         } else {
-          alert(`No sections matched "${searchInput.value}". Try searching for 'trainer', 'diet', 'iot', 'habit', 'buddy', 'pose', 'challenge', or 'architecture'.`);
+          showAppNotification(`No sections matched "${searchInput.value}". Try searching for 'trainer', 'diet', 'iot', 'habit', 'buddy', 'pose', or 'challenge'.`, "warning");
         }
       }
     });
@@ -1633,5 +1631,53 @@ function clearNotifications() {
   if (badge) {
     badge.classList.add("hidden");
   }
+}
+
+/* Custom App-level Toast Notification Function */
+function showAppNotification(message, type = 'info') {
+  // Check if an existing toast exists, remove it
+  let existingToast = document.getElementById("app-toast-el");
+  if (existingToast) {
+    existingToast.remove();
+  }
+
+  // Create toast element
+  const toast = document.createElement("div");
+  toast.id = "app-toast-el";
+  toast.className = `app-toast ${type}`;
+
+  // Icon based on type
+  let iconHtml = '<i data-lucide="info" style="stroke: var(--color-red)"></i>';
+  if (type === 'success') {
+    iconHtml = '<i data-lucide="check-circle" style="stroke: var(--color-green)"></i>';
+  } else if (type === 'warning') {
+    iconHtml = '<i data-lucide="alert-triangle" style="stroke: var(--color-orange)"></i>';
+  }
+
+  toast.innerHTML = `
+    <div class="app-toast-icon">${iconHtml}</div>
+    <div class="app-toast-message">${message}</div>
+  `;
+
+  document.body.appendChild(toast);
+  
+  // Re-run lucide icons rendering
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+
+  // Force reflow
+  toast.offsetHeight;
+
+  // Slide and fade in
+  toast.classList.add("show");
+
+  // Automatically fade out and remove after 4 seconds
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => {
+      toast.remove();
+    }, 300);
+  }, 4000);
 }
 
