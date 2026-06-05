@@ -6,6 +6,7 @@ import asyncio
 from typing import Optional, List
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import numpy as np
 
@@ -27,6 +28,7 @@ except ImportError:
     HAS_PYMONGO = False
 
 app = FastAPI(title="Trivan's Tech AI Gym Backend")
+app.mount("/", StaticFiles(directory=".", html=True))
 
 # Enable CORS for frontend connection
 app.add_middleware(
