@@ -670,6 +670,11 @@ function stopTrainer() {
   
   initLucideIcons();
   
+  // Cancel any in-progress or queued voice feedback immediately on session stop
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+
   addFeedbackLog("Session stopped.", "info");
 }
 
