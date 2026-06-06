@@ -419,7 +419,7 @@ async def call_huggingface(message: str, system_prompt: str) -> str:
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             res = await client.post(
-                "https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct-v0.3",
+                "https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-7B-Instruct",
                 headers=headers,
                 json=payload
             )
