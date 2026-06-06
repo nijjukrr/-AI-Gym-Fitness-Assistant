@@ -100,23 +100,36 @@ print("=================== All Questions Completed ===================")
 import socket
 print("\n=== Remote Diagnostics ===")
 try:
-    print("DNS lookup for api-inference.huggingface.co:")
-    print(socket.getaddrinfo('api-inference.huggingface.co', 80))
+    print("DNS lookup for router.huggingface.co:")
+    print(socket.getaddrinfo('router.huggingface.co', 80))
 except Exception as e:
-    print(f"DNS failed for api-inference.huggingface.co: {e}")
-
-try:
-    print("DNS lookup for huggingface.co:")
-    print(socket.getaddrinfo('huggingface.co', 80))
-except Exception as e:
-    print(f"DNS failed for huggingface.co: {e}")
+    print(f"DNS failed for router.huggingface.co: {e}")
 
 try:
     import urllib.request
-    print("Trying to fetch huggingface.co home page via urllib:")
-    req = urllib.request.Request("https://huggingface.co", headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=5) as res:
+    import json
+    print("Trying to fetch Hugging Face response from router via urllib:")
+    url = "https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct-v0.3"
+    import os
+    hf_key = os.getenv("HUGGINGFACE_API_KEY")
+    headers = {
+        "Authorization": f"Bearer {hf_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "inputs": "<s>[INST] You are a helpful assistant.\n\ngive me a high protein diet plan for muscle gain [/INST]",
+        "parameters": {
+            "max_new_tokens": 100,
+            "temperature": 0.7,
+            "return_full_text": False
+        }
+    }
+    req_data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=req_data, headers=headers, method="POST")
+    with urllib.request.urlopen(req, timeout=15) as res:
         print(f"Status: {res.status}")
+        print("Response body:")
+        print(res.read().decode())
 except Exception as e:
-    print(f"Urllib failed: {e}")
+    print(f"Urllib request failed: {e}")
 
