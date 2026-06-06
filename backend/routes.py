@@ -404,29 +404,31 @@ async def call_huggingface(message: str, system_prompt: str) -> str:
     
     headers = {
         "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "User-Agent": "TrivansTechAiGymAssistant/1.0"
     }
     
     payload = {
-        "inputs": f"<s>[INST] {system_prompt}\n\n{message} [/INST]",
-        "parameters": {
-            "max_new_tokens": 300,
-            "temperature": 0.7,
-            "return_full_text": False
-        }
+        "model": "Qwen/Qwen2.5-7B-Instruct",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": message}
+        ],
+        "max_tokens": 300,
+        "temperature": 0.7
     }
     
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             res = await client.post(
-                "https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-7B-Instruct",
+                "https://router.huggingface.co/v1/chat/completions",
                 headers=headers,
                 json=payload
             )
             if res.status_code == 200:
                 data = res.json()
-                if isinstance(data, list) and data:
-                    return data[0].get("generated_text", "").strip()
+                if "choices" in data and len(data["choices"]) > 0:
+                    return data["choices"][0]["message"]["content"].strip()
             else:
                 print(f"[HuggingFace API Error] status={res.status_code} response={res.text}")
                 return f"ERROR: HuggingFace API returned status {res.status_code}: {res.text}"
