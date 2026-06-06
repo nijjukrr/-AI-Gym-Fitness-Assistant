@@ -277,10 +277,14 @@ async def search_gyms(
             res = await client.post(
                 overpass_url,
                 data={"data": query},
-                headers={"Content-Type": "application/x-www-form-urlencoded"}
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "User-Agent": "TrivansTechAiGymAssistant/1.0 (contact@trivanstech.com)"
+                }
             )
 
             if res.status_code != 200:
+                print(f"[OSM Gym Search Error] status={res.status_code} body={res.text}")
                 raise HTTPException(
                     status_code=400,
                     detail="Location services unavailable. Please try again later."
@@ -396,7 +400,7 @@ async def call_huggingface(message: str, system_prompt: str) -> str:
     import httpx
     api_key = os.getenv("HUGGINGFACE_API_KEY")
     if not api_key:
-        return None
+        return "ERROR: HUGGINGFACE_API_KEY env var not set on server"
     
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -423,10 +427,13 @@ async def call_huggingface(message: str, system_prompt: str) -> str:
                 data = res.json()
                 if isinstance(data, list) and data:
                     return data[0].get("generated_text", "").strip()
+            else:
+                print(f"[HuggingFace API Error] status={res.status_code} response={res.text}")
+                return f"ERROR: HuggingFace API returned status {res.status_code}: {res.text}"
         return None
     except Exception as e:
         print(f"[HuggingFace Error] {e}")
-        return None
+        return f"ERROR: Exception: {str(e)}"
 
 @router.post("/ai/coach")
 async def calorie_coach_chat(req: ChatRequest):
