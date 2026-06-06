@@ -324,7 +324,7 @@
               <p>Motion efficiency & range of motion analysis over time.</p>
               <div class="card-preview" id="dash-pose-preview-container">
                 <span class="preview-metric">Weekly Score</span>
-                <span class="preview-value text-red" id="dash-pose-score">92 / 100</span>
+                <span class="preview-value text-red" id="dash-pose-score"><span id="dash-weekly-score">--</span> / 100</span>
               </div>
               <div class="card-preview hidden" id="dash-pose-empty-state" style="white-space: normal; line-height: 1.4; color: var(--text-muted);">
                 Complete a workout to see your performance score.
@@ -619,6 +619,10 @@
             </div>
           </div>
 
+          <div class="demo-notice" style="background:rgba(255,165,0,0.15); border:1px solid rgba(255,165,0,0.5); padding:12px 16px; border-radius:8px; margin-bottom:15px; text-align:center; color:#e0a030; font-size:0.95rem;">
+            ⚠️ <strong>IoT Demo Mode</strong> — Simulated data. Connect real MQTT devices to enable live telemetry.
+          </div>
+
           <div class="iot-grid">
             <!-- Treadmill Controls Card -->
             <div class="block-card iot-card">
@@ -880,8 +884,8 @@
                 <div class="score-icon color-red"><i data-lucide="gauge"></i></div>
                 <div class="score-info">
                   <span class="label">Efficiency Score</span>
-                  <h3 id="score-efficiency">94 %</h3>
-                  <small class="trend up"><i data-lucide="trending-up"></i> +2% from last week</small>
+                  <h3 id="score-efficiency">--</h3>
+                  <small class="trend"><i data-lucide="gauge"></i> Efficiency</small>
                 </div>
               </div>
 
@@ -920,8 +924,8 @@
                 <div class="score-icon color-red"><i data-lucide="orbit"></i></div>
                 <div class="score-info">
                   <span class="label">Range of Motion (ROM)</span>
-                  <h3 id="score-rom">142°</h3>
-                  <small class="trend up"><i data-lucide="trending-up"></i> Optimal angle reach</small>
+                  <h3 id="score-rom">--</h3>
+                  <small class="trend"><i data-lucide="orbit"></i> Angle reach</small>
                 </div>
               </div>
 
@@ -930,8 +934,8 @@
                 <div class="score-icon color-red"><i data-lucide="timer"></i></div>
                 <div class="score-info">
                   <span class="label">Tempo Consistency</span>
-                  <h3 id="score-tempo">88 %</h3>
-                  <small class="trend down"><i data-lucide="trending-down"></i> -1% deviation</small>
+                  <h3 id="score-tempo">--</h3>
+                  <small class="trend"><i data-lucide="timer"></i> Consistency</small>
                 </div>
               </div>
             </div>
@@ -963,10 +967,8 @@
             <!-- Actionable Performance Guidance -->
             <div class="block-card performance-guidance-box mt-4">
               <h3><i data-lucide="zap" class="text-red mr-2"></i>AI Performance Insights</h3>
-              <ul class="insights-list">
-                <li>Your squat depth reached an optimal 142 degrees on reps 5 to 8, activating glutes and quads efficiently.</li>
-                <li>Right/left body symmetry was 98.2% aligned. No significant imbalances detected in weight distribution.</li>
-                <li>Your rep cadence was slightly fast on the descent (eccentric phase). Aim for a 2-second eccentric phase next time.</li>
+              <ul class="insights-list" id="ai-insights-list">
+                <li style="color: var(--text-muted);">Complete a workout to generate AI performance insights.</li>
               </ul>
             </div>
           </div>
