@@ -5,9 +5,7 @@
 
 // Global State
 // Resolve API base URL dynamically based on current deployment
-const API_BASE = window.location.origin.includes("localhost") || window.location.origin.includes("127.0.0.1")
-  ? "http://localhost:8000/api"
-  : `${window.location.origin}/api`;
+const API_BASE = "https://ai-gym-fitness-assistant-1.onrender.com/api";
 
 let generatedOTP = "123456";
 let isLoggedIn = false;
@@ -349,6 +347,7 @@ let currentExercise = "bicep-curl";
 let isTrainerActive = false;
 let isDemoMode = false;
 let demoAnimationId = null;
+let sessionStartTime = null;
 let repMaxAngle = 0;
 let repMinAngle = 180;
 
@@ -534,6 +533,7 @@ function resetTrainerStats() {
   exerciseState = "neutral";
   repMaxAngle = 0;
   repMinAngle = 180;
+  sessionStartTime = Date.now();
   
   document.getElementById("trainer-rep-count").innerText = "0";
   document.getElementById("trainer-rep-progress").style.width = "0%";
@@ -1214,21 +1214,23 @@ function stopTrainer() {
   if (trainerRepCount > 0) {
     const exercise = currentExercise;
     const reps = trainerRepCount;
-    const score = Math.round(85 + Math.random() * 12);
+    const sets = parseInt(document.getElementById("workout-sets")?.value) || 1;
+    const duration = sessionStartTime ? Math.round((Date.now() - sessionStartTime) / 1000) : 0;
+    const performance_score = Math.round(85 + Math.random() * 12);
     
     const token = localStorage.getItem("trivan_jwt_token");
     const headers = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    fetch(`${API_BASE}/workout/log`, {
+    fetch(`${API_BASE}/workout/logs`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ exercise, reps, score })
+      body: JSON.stringify({ exercise, reps, sets, duration, performance_score })
     })
     .then(res => res.json())
     .then(data => {
       console.log("[LOGGED WORKOUT]", data);
-      addFeedbackLog(`Logged ${reps} reps of ${exercise} to database!`, "success");
+      addFeedbackLog(`Logged ${reps} reps (${sets} sets, ${duration}s) of ${exercise}!`, "success");
     })
     .catch(err => {
       console.warn("[Backend Offline] Failed to log workout to server.", err);
@@ -1556,11 +1558,8 @@ function sendDietChat() {
     appendDietChatBubble(data.response, "bot");
   })
   .catch(err => {
-    console.warn("[Backend Offline] Using local dietician fallback parser.");
-    setTimeout(() => {
-      const response = getDieticianResponse(text);
-      appendDietChatBubble(response, "bot");
-    }, 1000);
+    console.error("AI Coach request failed:", err);
+    appendDietChatBubble("AI unavailable, please try again", "bot");
   });
 }
 
@@ -1621,12 +1620,7 @@ function initSmartGym() {
   
   if (treadmillInterval) clearInterval(treadmillInterval);
 
-  // Define WS URL based on current protocol and host
-  const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const wsHost = window.location.origin.includes("localhost") || window.location.origin.includes("127.0.0.1")
-    ? "localhost:8000"
-    : window.location.host;
-  const wsUrl = `${wsProtocol}//${wsHost}/api/iot/ws`;
+  const wsUrl = "wss://ai-gym-fitness-assistant-1.onrender.com/api/iot/ws";
 
   try {
     if (gymSocket) {
@@ -1938,17 +1932,8 @@ function sendBuddyChat() {
     }
   })
   .catch(err => {
-    console.warn("[Backend Offline] Falling back to local buddy parser.", err);
-    const mood = analyzeSentiment(text);
-    updateBuddyMood(mood);
-    setTimeout(() => {
-      const response = getBuddyResponse(text, mood);
-      appendBuddyChatBubble(response, "bot");
-      const voiceChecked = document.getElementById("buddy-voice-enabled").checked;
-      if (voiceChecked) {
-        speakBuddyResponse(response);
-      }
-    }, 1000);
+    console.error("AI Buddy request failed:", err);
+    appendBuddyChatBubble("AI unavailable, please try again", "bot");
   });
 }
 
@@ -2177,27 +2162,7 @@ async function renderCharts(forceRefresh = false) {
 /* ==========================================
    8. MODULE 7: GYM RECOMMENDER & PLANNER
    ========================================== */
-const gymDatabase = [
-  { name: "Gold's Fitness Hub", baseLat: 12.965, baseLng: 77.585, rating: 4.8, pool: true, sauna: true, trainers: true, match: 92, address: "502 Cyber Square Ave, Metro City", baseDistance: 2.1 },
-  { name: "Iron & Steel Barbell Gym", baseLat: 12.952, baseLng: 77.610, rating: 4.6, pool: false, sauna: false, trainers: true, match: 86, address: "88 Iron Parkway Rd, East District", baseDistance: 4.5 },
-  { name: "Aqua-Zen Wellness Resort", baseLat: 12.990, baseLng: 77.620, rating: 4.9, pool: true, sauna: true, trainers: false, match: 90, address: "12 Wellness Dr, Bay Area", baseDistance: 7.2 },
-  { name: "Velocity Cardio & HIIT Club", baseLat: 12.940, baseLng: 77.550, rating: 4.2, pool: false, sauna: true, trainers: true, match: 80, address: "204 Speed Lane, High Rise District", baseDistance: 8.9 },
-  { name: "Powerhouse Elite Club", baseLat: 13.020, baseLng: 77.510, rating: 4.7, pool: true, sauna: false, trainers: true, match: 84, address: "707 Heavy Stack Way, West Industrial", baseDistance: 12.4 }
-];
-
 let userCoords = null;
-
-function getHaversineDistance(lat1, lon1, lat2, lon2) {
-  const R = 3958.8; // Earth radius in miles
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-}
 
 function initGymRecommender() {
   if (navigator.geolocation) {
@@ -2221,7 +2186,7 @@ function initGymRecommender() {
   }
 }
 
-function filterGyms() {
+async function filterGyms() {
   const distSelect = document.getElementById("gym-distance");
   if (!distSelect) return;
 
@@ -2231,87 +2196,117 @@ function filterGyms() {
   const resultsContainer = document.getElementById("gym-list-results");
   if (!resultsContainer) return;
 
-  resultsContainer.innerHTML = "";
+  resultsContainer.innerHTML = `
+    <div class="block-card text-center text-muted" style="padding: 30px;">
+      <p>Searching for nearby gyms...</p>
+    </div>
+  `;
 
-  // Get active workout goal for personalized matching
-  const workoutGoal = document.getElementById("workout-goal")?.value || "maintenance";
-
-  const evaluatedGyms = gymDatabase.map(gym => {
-    let dist = gym.baseDistance;
-    if (userCoords) {
-      dist = parseFloat(getHaversineDistance(userCoords.lat, userCoords.lng, gym.baseLat, gym.baseLng).toFixed(1));
-    }
-    
-    // Dynamic Match Score calculation based on active user fitness goal
-    let matchScore = gym.match;
-    if (workoutGoal === "muscle-gain") {
-      if (gym.name.includes("Barbell") || gym.name.includes("Elite")) {
-        matchScore = Math.min(99, matchScore + 10);
-      } else if (gym.trainers) {
-        matchScore = Math.min(99, matchScore + 5);
-      }
-    } else if (workoutGoal === "weight-loss") {
-      if (gym.name.includes("Cardio") || gym.name.includes("HIIT")) {
-        matchScore = Math.min(99, matchScore + 10);
-      } else if (gym.sauna) {
-        matchScore = Math.min(99, matchScore + 5);
-      }
-    } else if (workoutGoal === "maintenance") {
-      if (gym.pool && gym.sauna) {
-        matchScore = Math.min(99, matchScore + 8);
-      }
-    }
-
-    return { ...gym, calculatedDistance: dist, calculatedMatch: matchScore };
-  });
-
-  const filtered = evaluatedGyms.filter(gym => {
-    if (gym.calculatedDistance > maxDistance) return false;
-    
-    if (typeFilter === "pool" && !gym.pool) return false;
-    if (typeFilter === "sauna" && !gym.sauna) return false;
-    if (typeFilter === "trainers" && !gym.trainers) return false;
-
-    return true;
-  });
-
-  // Sort by calculated distance
-  filtered.sort((a, b) => a.calculatedDistance - b.calculatedDistance);
-
-  if (filtered.length === 0) {
-    resultsContainer.innerHTML = `
-      <div class="block-card text-center text-muted">
-        <p>No gyms match your select criteria. Try increasing the search distance radius.</p>
-      </div>
-    `;
-    return;
+  // Determine user location
+  let locQuery = "12.9716,77.5946"; // fallback Bangalore coordinates
+  if (userCoords) {
+    locQuery = `${userCoords.lat},${userCoords.lng}`;
   }
 
-  filtered.forEach(gym => {
-    const card = document.createElement("div");
-    card.className = "block-card gym-card hover-scale";
-    
-    let tagsHtml = "";
-    if (gym.pool) tagsHtml += `<span class="tag">Pool</span>`;
-    if (gym.sauna) tagsHtml += `<span class="tag">Sauna</span>`;
-    if (gym.trainers) tagsHtml += `<span class="tag">Trainers</span>`;
+  // Fetch gyms from backend which queries Google Places API
+  const token = localStorage.getItem("trivan_jwt_token");
+  const headers = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    card.innerHTML = `
-      <div class="camera-controls button-panel">
-        <h4>${gym.name}</h4>
-        <span class="desc">${gym.address}</span>
-        <div class="gym-tags mt-2">
-          ${tagsHtml}
+  try {
+    const res = await fetch(`${API_BASE}/gyms/search?location=${locQuery}&radius_miles=${maxDistance}`, { headers });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      const errMsg = errData.detail || "Location services unavailable. Please try again later.";
+      resultsContainer.innerHTML = `
+        <div class="block-card text-center text-muted" style="padding: 30px;">
+          <p>${errMsg}</p>
         </div>
-      </div>
-      <div class="gym-card-right">
-        <span class="dist">${gym.calculatedDistance} miles</span>
-        <span class="match">${gym.calculatedMatch}% Match Rating</span>
+      `;
+      return;
+    }
+
+    let gyms = await res.json();
+
+    // Filter by type if needed
+    if (typeFilter !== "all" && typeFilter !== "all-gyms") {
+      gyms = gyms.filter(gym => {
+        if (typeFilter === "pool" && !gym.pool) return false;
+        if (typeFilter === "sauna" && !gym.sauna) return false;
+        if (typeFilter === "trainers" && !gym.trainers) return false;
+        return true;
+      });
+    }
+
+    // Sort by calculated distance
+    gyms.sort((a, b) => a.calculatedDistance - b.calculatedDistance);
+
+    resultsContainer.innerHTML = "";
+
+    if (gyms.length === 0) {
+      resultsContainer.innerHTML = `
+        <div class="block-card text-center text-muted" style="padding: 30px;">
+          <p>No gyms match your select criteria. Try increasing the search distance radius.</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Apply active workout goal boost to matches dynamically
+    const workoutGoal = document.getElementById("workout-goal")?.value || "maintenance";
+
+    gyms.forEach(gym => {
+      let matchScore = gym.calculatedMatch;
+      if (workoutGoal === "muscle-gain") {
+        if (gym.name.includes("Barbell") || gym.name.includes("Elite")) {
+          matchScore = Math.min(99, matchScore + 10);
+        } else if (gym.trainers) {
+          matchScore = Math.min(99, matchScore + 5);
+        }
+      } else if (workoutGoal === "weight-loss") {
+        if (gym.name.includes("Cardio") || gym.name.includes("HIIT")) {
+          matchScore = Math.min(99, matchScore + 10);
+        } else if (gym.sauna) {
+          matchScore = Math.min(99, matchScore + 5);
+        }
+      } else if (workoutGoal === "maintenance") {
+        if (gym.pool && gym.sauna) {
+          matchScore = Math.min(99, matchScore + 8);
+        }
+      }
+
+      const card = document.createElement("div");
+      card.className = "block-card gym-card hover-scale";
+      
+      let tagsHtml = "";
+      if (gym.pool) tagsHtml += `<span class="tag">Pool</span>`;
+      if (gym.sauna) tagsHtml += `<span class="tag">Sauna</span>`;
+      if (gym.trainers) tagsHtml += `<span class="tag">Trainers</span>`;
+
+      card.innerHTML = `
+        <div class="camera-controls button-panel">
+          <h4>${gym.name}</h4>
+          <span class="desc">${gym.address}</span>
+          <div class="gym-tags mt-2">
+            ${tagsHtml}
+          </div>
+        </div>
+        <div class="gym-card-right">
+          <span class="dist">${gym.calculatedDistance} miles</span>
+          <span class="match">${matchScore}% Match Rating</span>
+        </div>
+      `;
+
+      resultsContainer.appendChild(card);
+    });
+  } catch (err) {
+    console.error("Gym search error:", err);
+    resultsContainer.innerHTML = `
+      <div class="block-card text-center text-muted" style="padding: 30px;">
+        <p>Location services unavailable. Please try again later.</p>
       </div>
     `;
-
-    resultsContainer.appendChild(card);
-  });
+  }
 }
 
 function togglePlannerDay(day) {

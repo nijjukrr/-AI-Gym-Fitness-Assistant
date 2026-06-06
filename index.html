@@ -39,7 +39,7 @@
   <!-- Fullscreen Video Background Login Portal -->
   <div id="login-container" class="login-container">
     <video autoplay muted loop playsinline id="bg-video">
-      <source src="Gym Promotional Video Cinematic Workout Advertisment [get.gt].mp4" type="video/mp4">
+      <source src="vidssave.com a Cinematic Fitness Video...SONY FX6 2160P.mp4" type="video/mp4">
       Your browser does not support HTML5 video tags.
     </video>
     
@@ -352,20 +352,26 @@
               <h2>AI Gym Trainer</h2>
               <p>Real-time form tracking, posture correction, and rep counter using computer vision.</p>
             </div>
-            <div class="trainer-exercise-select">
-              <label for="select-exercise">Exercise:</label>
-              <select id="select-exercise" class="select-input">
-                <option value="bicep-curl">Bicep Curls</option>
-                <option value="shoulder-press">Shoulder Press</option>
-                <option value="lateral-raise">Lateral Raises</option>
-                <option value="push-up">Push-Ups</option>
-                <option value="squat">Squats</option>
-                <option value="tricep-dip">Tricep Dips</option>
-                <option value="jumping-jack">Jumping Jacks</option>
-                <option value="lunges">Lunges</option>
-                <option value="sit-up">Sit-Ups</option>
-                <option value="calf-raise">Calf Raises</option>
-              </select>
+            <div class="trainer-exercise-select" style="display: flex; gap: 15px; align-items: center; justify-content: flex-end; flex-wrap: wrap;">
+              <div style="display: flex; flex-direction: column;">
+                <label for="select-exercise" style="margin-bottom: 4px; font-size: 0.85rem; color: var(--text-muted);">Exercise:</label>
+                <select id="select-exercise" class="select-input" style="height: 42px;">
+                  <option value="bicep-curl">Bicep Curls</option>
+                  <option value="shoulder-press">Shoulder Press</option>
+                  <option value="lateral-raise">Lateral Raises</option>
+                  <option value="push-up">Push-Ups</option>
+                  <option value="squat">Squats</option>
+                  <option value="tricep-dip">Tricep Dips</option>
+                  <option value="jumping-jack">Jumping Jacks</option>
+                  <option value="lunges">Lunges</option>
+                  <option value="sit-up">Sit-Ups</option>
+                  <option value="calf-raise">Calf Raises</option>
+                </select>
+              </div>
+              <div style="display: flex; flex-direction: column;">
+                <label for="workout-sets" style="margin-bottom: 4px; font-size: 0.85rem; color: var(--text-muted);">Sets:</label>
+                <input type="number" id="workout-sets" class="select-input" value="1" min="1" max="10" style="width: 70px; height: 42px; text-align: center; border-radius: 8px; background: rgba(255, 255, 255, 0.05); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.1);">
+              </div>
             </div>
           </div>
 

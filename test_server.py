@@ -85,6 +85,33 @@ class TestServerEndpoints(unittest.TestCase):
         self.assertIn("bmi", data)
         self.assertIn("plan_html", data)
 
+    def test_workout_logs(self):
+        headers = {"Authorization": f"Bearer {self.token}"}
+        # Get logs
+        response = client.get("/api/workout/logs", headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.json(), list)
+        
+        # Post log
+        payload = {
+            "exercise": "squats",
+            "reps": 12,
+            "sets": 3,
+            "duration": 45,
+            "performance_score": 92
+        }
+        post_response = client.post("/api/workout/logs", json=payload, headers=headers)
+        self.assertEqual(post_response.status_code, 200)
+        
+        # Get logs again
+        get_response = client.get("/api/workout/logs", headers=headers)
+        self.assertEqual(get_response.status_code, 200)
+        logs = get_response.json()
+        self.assertTrue(len(logs) > 0)
+        self.assertEqual(logs[-1]["exercise"], "squats")
+        self.assertEqual(logs[-1]["sets"], 3)
+        self.assertEqual(logs[-1]["duration"], 45)
+
     def test_workout_generate(self):
         headers = {"Authorization": f"Bearer {self.token}"}
         payload = {
