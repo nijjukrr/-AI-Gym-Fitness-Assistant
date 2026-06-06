@@ -130,6 +130,14 @@ try:
         print(f"Status: {res.status}")
         print("Response body:")
         print(res.read().decode())
+    import urllib.request
+    import json
+    print("Querying Google DNS-over-HTTPS for api-inference.huggingface.co:")
+    url = "https://dns.google/resolve?name=api-inference.huggingface.co&type=A"
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=5) as res:
+        data = json.loads(res.read().decode())
+        print(json.dumps(data, indent=2))
 except urllib.error.HTTPError as e:
     print(f"Urllib request failed with HTTP Error {e.code}:")
     print(e.read().decode())
