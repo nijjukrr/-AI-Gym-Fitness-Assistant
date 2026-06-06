@@ -108,9 +108,9 @@ except Exception as e:
 try:
     import urllib.request
     import json
-    print("Trying to fetch Hugging Face response from router via urllib:")
-    url = "https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct-v0.3"
     import os
+    print("Trying to fetch Mistral 7B response from router via urllib:")
+    url = "https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct-v0.3"
     hf_key = os.getenv("HUGGINGFACE_API_KEY")
     headers = {
         "Authorization": f"Bearer {hf_key}",
@@ -130,17 +130,52 @@ try:
         print(f"Status: {res.status}")
         print("Response body:")
         print(res.read().decode())
+except urllib.error.HTTPError as e:
+    print(f"Mistral request failed with HTTP Error {e.code}: {e.read().decode()}")
+except Exception as e:
+    print(f"Mistral request failed: {e}")
+
+try:
     import urllib.request
     import json
-    print("Querying Google DNS-over-HTTPS for api-inference.huggingface.co:")
+    import os
+    print("\nTrying to fetch Qwen 2.5 response from router via urllib:")
+    url = "https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-7B-Instruct"
+    hf_key = os.getenv("HUGGINGFACE_API_KEY")
+    headers = {
+        "Authorization": f"Bearer {hf_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "inputs": "give me a high protein diet plan for muscle gain",
+        "parameters": {
+            "max_new_tokens": 100,
+            "temperature": 0.7,
+            "return_full_text": False
+        }
+    }
+    req_data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=req_data, headers=headers, method="POST")
+    with urllib.request.urlopen(req, timeout=15) as res:
+        print(f"Status: {res.status}")
+        print("Response body:")
+        print(res.read().decode())
+except urllib.error.HTTPError as e:
+    print(f"Qwen request failed with HTTP Error {e.code}: {e.read().decode()}")
+except Exception as e:
+    print(f"Qwen request failed: {e}")
+
+try:
+    import urllib.request
+    import json
+    print("\nQuerying Google DNS-over-HTTPS for api-inference.huggingface.co:")
     url = "https://dns.google/resolve?name=api-inference.huggingface.co&type=A"
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(req, timeout=5) as res:
         data = json.loads(res.read().decode())
         print(json.dumps(data, indent=2))
 except urllib.error.HTTPError as e:
-    print(f"Urllib request failed with HTTP Error {e.code}:")
-    print(e.read().decode())
+    print(f"DoH request failed with HTTP Error {e.code}: {e.read().decode()}")
 except Exception as e:
-    print(f"Urllib request failed: {e}")
+    print(f"DoH request failed: {e}")
 
