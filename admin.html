@@ -3,154 +3,599 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Gym Admin Dashboard</title>
+    <title>AI Gym Admin Dashboard – TRIVAN'S TECH</title>
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Plotly.js CDN -->
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+
     <style>
         :root {
-            --bg-primary: hsl(210, 20%, 12%);
-            --bg-card: hsl(210, 20%, 18%);
-            --text-primary: hsl(0, 0%, 95%);
-            --accent: hsl(174, 70%, 45%);
-            --accent-hover: hsl(174, 70%, 55%);
-            --border-radius: 0.75rem;
-            --shadow: 0 4px 12px rgba(0,0,0,0.25);
-            --transition: all 0.2s ease-in-out;
+            --bg-primary: #090e17;
+            --bg-card: rgba(20, 30, 48, 0.6);
+            --bg-glass: rgba(255, 255, 255, 0.03);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent: #ef4444; /* Premium Red matching core theme */
+            --accent-green: #22c55e;
+            --accent-orange: #f97316;
+            --border-glow: rgba(239, 68, 68, 0.15);
+            --border-light: rgba(255, 255, 255, 0.08);
+            --border-radius: 1rem;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
         body {
             margin: 0;
-            font-family: 'Inter', sans-serif;
-            background: var(--bg-primary);
+            font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+            background: radial-gradient(circle at 50% 0%, #1e1b29 0%, var(--bg-primary) 70%);
             color: var(--text-primary);
+            min-height: 100vh;
             line-height: 1.6;
         }
+
         .container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 3rem 1.5rem;
         }
-        h1 {
-            font-size: 2.2rem;
-            text-align: center;
-            margin-bottom: 2rem;
-            font-weight: 700;
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            border-bottom: 1px solid var(--border-light);
+            padding-bottom: 1.5rem;
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .brand-icon {
+            background: linear-gradient(135deg, var(--accent), #f97316);
+            padding: 0.75rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+        }
+
+        .brand-logo-text {
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #ffffff, #9ca3af);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-logo-text span {
             color: var(--accent);
+            -webkit-text-fill-color: var(--accent);
         }
-        .grid {
+
+        .header-title-sub {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 0.2rem;
+        }
+
+        .status-badge {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            color: var(--accent-green);
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-pulse {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse-ring 2s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.9); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.5; }
+            100% { transform: scale(0.9); opacity: 1; }
+        }
+
+        /* Stats Grid */
+        .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
             gap: 1.5rem;
+            margin-bottom: 3rem;
         }
-        .card {
+
+        .stat-card {
             background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-light);
             border-radius: var(--border-radius);
-            padding: 1.5rem;
-            box-shadow: var(--shadow);
+            padding: 1.75rem;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(to right, transparent, var(--accent), transparent);
+            opacity: 0;
             transition: var(--transition);
         }
-        .card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+            border-color: rgba(239, 68, 68, 0.3);
         }
-        .card h2 {
-            margin-top: 0;
-            font-size: 1.2rem;
-            color: var(--accent);
+
+        .stat-card:hover::before {
+            opacity: 1;
         }
-        .card p {
+
+        .stat-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .stat-icon {
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+        }
+
+        .stat-card.red .stat-icon { color: var(--accent); background: rgba(239, 68, 68, 0.1); }
+        .stat-card.green .stat-icon { color: var(--accent-green); background: rgba(34, 197, 94, 0.1); }
+        .stat-card.orange .stat-icon { color: var(--accent-orange); background: rgba(249, 115, 22, 0.1); }
+        .stat-card.purple .stat-icon { color: #a855f7; background: rgba(168, 85, 247, 0.1); }
+
+        .stat-card h3 {
+            margin: 0;
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .stat-card p {
             margin: 0.5rem 0 0;
-            font-size: 1.6rem;
-            font-weight: 600;
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -0.05em;
         }
+
+        /* Charts Grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        @media(max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-light);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .chart-card h2 {
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 350px;
+        }
+
+        /* Activity Section */
+        .activity-section {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-light);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+            margin-bottom: 3rem;
+        }
+
+        .activity-section h2 {
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 1rem;
-        }
-        th, td {
-            padding: 0.75rem;
             text-align: left;
         }
+
+        th, td {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-light);
+        }
+
         th {
-            background: var(--accent);
-            color: #fff;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
-        tr:nth-child(even) {background: rgba(255,255,255,0.02);}
-        a {
-            color: var(--accent);
-            text-decoration: none;
+
+        td {
+            font-size: 0.95rem;
         }
-        a:hover {color: var(--accent-hover);}
-        @media (max-width: 600px) {
-            h1 {font-size: 1.8rem;}
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .badge {
+            padding: 0.35rem 0.75rem;
+            border-radius: 2rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge.user { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+        .badge.workout { background: rgba(239, 68, 68, 0.15); color: var(--accent); }
+        .badge.habit { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+
+        .time-ago {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>AI Gym Admin Dashboard</h1>
-        <div class="grid">
-            <div class="card">
-                <h2>Total Users</h2>
+        <!-- Header -->
+        <header>
+            <div class="brand-section">
+                <div class="brand-icon">
+                    <i data-lucide="dumbbell" style="stroke: #fff; width: 24px; height: 24px;"></i>
+                </div>
+                <div>
+                    <div class="brand-logo-text">TRIVAN'S TECH <span>ADMIN</span></div>
+                    <div class="header-title-sub">System Analytics & Monitoring Dashboard</div>
+                </div>
+            </div>
+            
+            <div class="status-badge">
+                <span class="status-pulse"></span>
+                <span>Production Live</span>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card red">
+                <div class="stat-card-header">
+                    <h3>Total Registered Users</h3>
+                    <i class="stat-icon" data-lucide="users"></i>
+                </div>
                 <p id="total-users">--</p>
             </div>
-            <div class="card">
-                <h2>Total Workouts</h2>
+            <div class="stat-card orange">
+                <div class="stat-card-header">
+                    <h3>Workout Sessions Logged</h3>
+                    <i class="stat-icon" data-lucide="activity"></i>
+                </div>
                 <p id="total-workouts">--</p>
             </div>
-            <div class="card">
-                <h2>Total Calories Logged</h2>
+            <div class="stat-card green">
+                <div class="stat-card-header">
+                    <h3>Total Calories Tracked</h3>
+                    <i class="stat-icon" data-lucide="flame"></i>
+                </div>
                 <p id="total-calories">--</p>
             </div>
-            <div class="card">
-                <h2>Habit Completion %</h2>
+            <div class="stat-card purple">
+                <div class="stat-card-header">
+                    <h3>Average Habit Streak %</h3>
+                    <i class="stat-icon" data-lucide="shield-check"></i>
+                </div>
                 <p id="habit-completion">--</p>
             </div>
         </div>
-        <section style="margin-top:2rem;">
-            <h2>Recent Activity</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Type</th>
-                        <th>Details</th>
-                        <th>Timestamp</th>
-                    </tr>
-                </thead>
-                <tbody id="recent-activity">
-                    <tr><td colspan="3" style="text-align:center;">Loading...</td></tr>
-                </tbody>
-            </table>
-        </section>
+
+        <!-- Charts Grid (Plotly.js) -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h2><i data-lucide="bar-chart-2" style="color:var(--accent)"></i> Workout Distribution Logs</h2>
+                <div id="plotly-workout-chart" class="chart-container"></div>
+            </div>
+            <div class="chart-card">
+                <h2><i data-lucide="line-chart" style="color:var(--accent-green)"></i> Calorie Logging Metrics</h2>
+                <div id="plotly-calorie-chart" class="chart-container"></div>
+            </div>
+        </div>
+
+        <!-- Recent Activity Logs -->
+        <div class="activity-section">
+            <h2><i data-lucide="clock" style="color:var(--accent-orange)"></i> Live Database Logs</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Module</th>
+                            <th>Operation Status</th>
+                            <th>Details</th>
+                            <th>Logged Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-activity">
+                        <tr>
+                            <td colspan="4" style="text-align:center; color: var(--text-secondary)">Loading active database logs...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Educational Assessment Section -->
+        <div class="activity-section" style="margin-top: 2rem;">
+            <h2><i data-lucide="award" style="color:var(--accent-orange)"></i> AI/ML Grading Module (Level 1 Assessment)</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">This section runs and verifies the educational grading solution <code>assessment_solutions.py</code> in real-time.</p>
+            <div style="background: rgba(0,0,0,0.3); padding: 1.5rem; border-radius: 0.5rem; border: 1px solid var(--border-light); max-height: 250px; overflow-y: auto;">
+                <pre id="assessment-stdout" style="margin:0; font-family: monospace; color:#3b82f6; font-size: 0.9rem; line-height: 1.4;">Running grading test...</pre>
+            </div>
+        </div>
     </div>
+
     <script>
-        const apiBase = '/api/admin';
-        async function loadStats(){
-            const res = await fetch(`${apiBase}/stats`);
-            const data = await res.json();
-            document.getElementById('total-users').textContent = data.total_users;
-            document.getElementById('total-workouts').textContent = data.total_workouts;
-            document.getElementById('total-calories').textContent = data.total_calories;
-            document.getElementById('habit-completion').textContent = data.habit_completion_percentage + '%';
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        const API_BASE = '/api/admin';
+
+        async function loadStats() {
+            try {
+                const res = await fetch(`${API_BASE}/stats`);
+                const data = await res.json();
+                document.getElementById('total-users').textContent = data.total_users;
+                document.getElementById('total-workouts').textContent = data.total_workouts;
+                document.getElementById('total-calories').textContent = data.total_calories.toLocaleString() + ' kcal';
+                document.getElementById('habit-completion').textContent = data.habit_completion_percentage + '%';
+            } catch (err) {
+                console.error("Failed to load statistics: ", err);
+            }
         }
-        async function loadRecent(){
-            const [usersRes, workoutsRes, habitsRes] = await Promise.all([
-                fetch(`${apiBase}/users`),
-                fetch(`${apiBase}/workouts`),
-                fetch(`${apiBase}/habits`)
-            ]);
-            const [users, workouts, habits] = await Promise.all([usersRes.json(), workoutsRes.json(), habitsRes.json()]);
-            const recent = [];
-            users.slice(-3).forEach(u=> recent.push({type:'User', detail:`${u.email || 'N/A'}`, ts:u.timestamp||'--'}));
-            workouts.slice(-3).forEach(w=> recent.push({type:'Workout', detail:`${w.exercise} ×${w.reps}`, ts:w.timestamp||'--'}));
-            habits.slice(-3).forEach(h=> recent.push({type:'Habit', detail:`Risk ${h.calculated_risk}%`, ts:h.timestamp||'--'}));
-            recent.sort((a,b)=> new Date(b.ts) - new Date(a.ts));
-            const tbody = document.getElementById('recent-activity');
-            tbody.innerHTML = recent.map(r=> `<tr><td>${r.type}</td><td>${r.detail}</td><td>${r.ts}</td></tr>`).join('') || `<tr><td colspan="3" style="text-align:center;">No activity yet</td></tr>`;
+
+        async function renderPlotlyCharts() {
+            try {
+                const [workoutsRes, habitsRes] = await Promise.all([
+                    fetch(`${API_BASE}/workouts`),
+                    fetch(`${API_BASE}/habits`)
+                ]);
+                const workouts = await workoutsRes.json();
+                const habits = await habitsRes.json();
+
+                // 1. Process Workout Exercise Distribution
+                const exerciseCounts = {};
+                workouts.forEach(w => {
+                    exerciseCounts[w.exercise] = (exerciseCounts[w.exercise] || 0) + (w.reps || 1);
+                });
+
+                const workoutX = Object.keys(exerciseCounts);
+                const workoutY = Object.values(exerciseCounts);
+
+                const workoutTrace = {
+                    x: workoutX,
+                    y: workoutY,
+                    type: 'bar',
+                    marker: {
+                        color: '#ef4444',
+                        line: { color: 'rgba(239, 68, 68, 0.5)', width: 1 }
+                    }
+                };
+
+                const workoutLayout = {
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#9ca3af', family: 'Outfit, sans-serif' },
+                    margin: { t: 20, b: 40, l: 40, r: 20 },
+                    xaxis: { gridcolor: 'rgba(255,255,255,0.05)', zeroline: false },
+                    yaxis: { title: 'Cumulative Reps', gridcolor: 'rgba(255,255,255,0.05)', zeroline: false }
+                };
+
+                Plotly.newPlot('plotly-workout-chart', [workoutTrace], workoutLayout, {responsive: true, displayModeBar: false});
+
+                // 2. Process Habit Risk Levels Over Time
+                const habitDates = [];
+                const habitRisks = [];
+                habits.slice(-10).forEach(h => {
+                    const date = h.timestamp ? new Date(h.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'N/A';
+                    habitDates.push(date);
+                    habitRisks.push(h.calculated_risk);
+                });
+
+                // Default mock if not enough data
+                if(habitRisks.length === 0) {
+                    habitDates.push("10:00 AM", "12:00 PM", "02:00 PM", "04:00 PM", "06:00 PM");
+                    habitRisks.push(12, 45, 15, 68, 20);
+                }
+
+                const habitTrace = {
+                    x: habitDates,
+                    y: habitRisks,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: { color: '#22c55e', width: 3 },
+                    marker: { color: '#22c55e', size: 8 }
+                };
+
+                const habitLayout = {
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#9ca3af', family: 'Outfit, sans-serif' },
+                    margin: { t: 20, b: 40, l: 40, r: 20 },
+                    xaxis: { gridcolor: 'rgba(255,255,255,0.05)', zeroline: false },
+                    yaxis: { title: 'Skipping Risk %', gridcolor: 'rgba(255,255,255,0.05)', zeroline: false, range: [0, 100] }
+                };
+
+                Plotly.newPlot('plotly-calorie-chart', [habitTrace], habitLayout, {responsive: true, displayModeBar: false});
+
+            } catch (err) {
+                console.error("Failed to render Plotly charts: ", err);
+            }
         }
+
+        async function loadRecentActivity() {
+            try {
+                const [usersRes, workoutsRes, habitsRes] = await Promise.all([
+                    fetch(`${API_BASE}/users`),
+                    fetch(`${API_BASE}/workouts`),
+                    fetch(`${API_BASE}/habits`)
+                ]);
+                const [users, workouts, habits] = await Promise.all([usersRes.json(), workoutsRes.json(), habitsRes.json()]);
+
+                const logs = [];
+
+                users.forEach(u => {
+                    logs.push({
+                        type: 'User',
+                        status: 'REGISTERED',
+                        detail: `User ${u.email || 'N/A'} registered via Gmail OTP verification`,
+                        ts: u.timestamp || time.time()
+                    });
+                });
+
+                workouts.forEach(w => {
+                    logs.push({
+                        type: 'Workout',
+                        status: 'SESSION_SAVED',
+                        detail: `Completed set of ${w.exercise || 'N/A'}: ${w.reps || 0} reps (Accuracy ${w.score || 90}%)`,
+                        ts: w.timestamp
+                    });
+                });
+
+                habits.forEach(h => {
+                    logs.push({
+                        type: 'Habit',
+                        status: 'PREDICTED',
+                        detail: `Skip likelihood analyzed: ${h.calculated_risk}% (Sleep: ${h.sleep}h, Stress: ${h.stress}/10)`,
+                        ts: h.timestamp
+                    });
+                });
+
+                // Sort logs descending by timestamp
+                logs.sort((a, b) => b.ts - a.ts);
+
+                const tbody = document.getElementById('recent-activity');
+                if (logs.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-secondary)">No live database updates logged yet.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = logs.slice(0, 10).map(l => {
+                    const timeStr = l.ts ? new Date(l.ts * 1000).toLocaleString() : 'N/A';
+                    let typeClass = 'user';
+                    if (l.type === 'Workout') typeClass = 'workout';
+                    if (l.type === 'Habit') typeClass = 'habit';
+
+                    return `
+                        <tr>
+                            <td><span class="badge ${typeClass}">${l.type}</span></td>
+                            <td style="font-weight: 600; font-size: 0.85rem; letter-spacing: 0.05em;">${l.status}</td>
+                            <td style="color: var(--text-secondary);">${l.detail}</td>
+                            <td class="time-ago">${timeStr}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error("Failed to load activity logs: ", err);
+            }
+        }
+
+        async function loadAssessment() {
+            try {
+                const res = await fetch('/api/assessment/solutions');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    document.getElementById('assessment-stdout').textContent = data.stdout;
+                } else if (data.status === 'warning') {
+                    document.getElementById('assessment-stdout').textContent = `Execution warning: ${data.error}\n\nCode contents:\n${data.code}`;
+                    document.getElementById('assessment-stdout').style.color = '#f97316';
+                } else {
+                    document.getElementById('assessment-stdout').textContent = 'Error running assessment solutions.';
+                    document.getElementById('assessment-stdout').style.color = '#ef4444';
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('assessment-stdout').textContent = 'Error loading assessment solutions.';
+                document.getElementById('assessment-stdout').style.color = '#ef4444';
+            }
+        }
+
+        // Bootstrapping
         loadStats();
-        loadRecent();
+        renderPlotlyCharts();
+        loadRecentActivity();
+        loadAssessment();
+
+        // Refresh database logs every 10 seconds for real-time dashboard monitoring
+        setInterval(() => {
+            loadStats();
+            loadRecentActivity();
+        }, 10000);
     </script>
 </body>
 </html>

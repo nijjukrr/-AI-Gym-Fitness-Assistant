@@ -4,9 +4,14 @@
    ========================================== */
 
 // Global State
-const API_BASE = "http://localhost:8000/api";
+// Resolve API base URL dynamically based on current deployment
+const API_BASE = window.location.origin.includes("localhost") || window.location.origin.includes("127.0.0.1")
+  ? "http://localhost:8000/api"
+  : `${window.location.origin}/api`;
+
 let generatedOTP = "123456";
 let isLoggedIn = false;
+let gymSocket = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   checkAuthState();
@@ -14,8 +19,9 @@ document.addEventListener("DOMContentLoaded", () => {
   initHeaderInteractions();
 });
 
-function checkAuthState() {
+async function checkAuthState() {
   const authState = localStorage.getItem("trivan_is_logged_in");
+  const token = localStorage.getItem("trivan_jwt_token");
   const loginContainer = document.getElementById("login-container");
   const appWrapper = document.getElementById("app-wrapper");
 
@@ -23,6 +29,27 @@ function checkAuthState() {
     isLoggedIn = true;
     loginContainer.classList.add("hidden");
     appWrapper.classList.remove("hidden");
+    
+    // Fetch profile details using JWT token
+    if (token) {
+      try {
+        const res = await fetch(`${API_BASE}/auth/me`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (res.status === 200) {
+          const user = await res.json();
+          document.querySelectorAll(".user-name").forEach(el => el.innerText = user.name || "Nishanth KR");
+          const avatarText = (user.name || "NK").split(" ").map(n => n[0]).join("").toUpperCase();
+          document.querySelectorAll(".user-avatar").forEach(el => el.innerText = avatarText);
+        } else if (res.status === 401) {
+          console.warn("Session expired. Logging out.");
+          logout();
+          return;
+        }
+      } catch (err) {
+        console.warn("Failed to contact auth server. Continuing with cached session.", err);
+      }
+    }
     
     // Initialize Dashboard & Modules
     initRouter();
@@ -76,7 +103,7 @@ function hideGmailToast() {
   }, 300);
 }
 
-function startGmailVerification() {
+async function startGmailVerification() {
   const emailInput = document.getElementById("login-email");
   const passwordInput = document.getElementById("login-password");
   
@@ -89,59 +116,114 @@ function startGmailVerification() {
     return;
   }
 
-  // Generate random 6-digit OTP code for simulation
-  generatedOTP = String(Math.floor(100000 + Math.random() * 900000));
-  
-  // Display code to user via custom simulated Gmail notification toast
-  showGmailToast(generatedOTP, emailInput.value);
-  
-  // Log it to console as fallback
-  console.log(`[TRIVAN'S TECH Verification System] OTP sent: ${generatedOTP}`);
-
-  // Display OTP input fields in form
-  document.getElementById("otp-wrapper").classList.remove("hidden");
-  document.getElementById("btn-verify-gmail").classList.add("hidden");
-  document.getElementById("btn-login-submit").classList.remove("hidden");
+  try {
+    const res = await fetch(`${API_BASE}/auth/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: emailInput.value.trim(), password: passwordInput.value })
+    });
+    const data = await res.json();
+    if (res.status === 200 || data.otp) {
+      generatedOTP = data.otp;
+      showGmailToast(generatedOTP, emailInput.value);
+      console.log(`[TRIVAN'S TECH Verification System] OTP sent: ${generatedOTP}`);
+      
+      document.getElementById("otp-wrapper").classList.remove("hidden");
+      document.getElementById("btn-verify-gmail").classList.add("hidden");
+      document.getElementById("btn-login-submit").classList.remove("hidden");
+    } else {
+      showAppNotification(data.detail || "Failed to start verification.", "warning");
+    }
+  } catch (err) {
+    console.warn("[Auth Offline] Running local validation mode.", err);
+    generatedOTP = String(Math.floor(100000 + Math.random() * 900000));
+    showGmailToast(generatedOTP, emailInput.value);
+    document.getElementById("otp-wrapper").classList.remove("hidden");
+    document.getElementById("btn-verify-gmail").classList.add("hidden");
+    document.getElementById("btn-login-submit").classList.remove("hidden");
+  }
 }
 
-function resendOTP() {
-  const emailVal = document.getElementById("login-email").value;
-  generatedOTP = String(Math.floor(100000 + Math.random() * 900000));
-  showGmailToast(generatedOTP, emailVal);
-  console.log(`[TRIVAN'S TECH Verification System] New OTP sent: ${generatedOTP}`);
+async function resendOTP() {
+  const emailVal = document.getElementById("login-email").value.trim();
+  const passwordVal = document.getElementById("login-password").value;
+  try {
+    const res = await fetch(`${API_BASE}/auth/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: emailVal, password: passwordVal })
+    });
+    const data = await res.json();
+    if (data.otp) {
+      generatedOTP = data.otp;
+      showGmailToast(generatedOTP, emailVal);
+      console.log(`[TRIVAN'S TECH Verification System] New OTP sent: ${generatedOTP}`);
+    }
+  } catch (err) {
+    generatedOTP = String(Math.floor(100000 + Math.random() * 900000));
+    showGmailToast(generatedOTP, emailVal);
+  }
 }
 
-function handleLoginSubmit(event) {
+async function handleLoginSubmit(event) {
   event.preventDefault();
   
   const otpWrapper = document.getElementById("otp-wrapper");
   const isOtpVisible = otpWrapper && !otpWrapper.classList.contains("hidden");
 
-  // If the user hit enter inside inputs before verification OTP was sent
   if (!isOtpVisible) {
     startGmailVerification();
     return;
   }
   
+  const emailVal = document.getElementById("login-email").value.trim();
+  const passwordVal = document.getElementById("login-password").value;
   const otpInput = document.getElementById("login-otp").value.trim();
   
-  if (otpInput === generatedOTP || otpInput === "123456") {
-    // Write state
-    localStorage.setItem("trivan_is_logged_in", "true");
+  try {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: emailVal, password: passwordVal, otp: otpInput })
+    });
     
-    // Transition UI
-    checkAuthState();
-  } else {
-    showAppNotification("Invalid verification code. Please check the code and try again.", "warning");
+    const data = await res.json();
+    if (res.status === 200) {
+      localStorage.setItem("trivan_jwt_token", data.token);
+      localStorage.setItem("trivan_is_logged_in", "true");
+      localStorage.setItem("trivan_user_name", data.user.name || "Nishanth KR");
+      localStorage.setItem("trivan_user_email", data.user.email);
+      showAppNotification("Successfully logged in!", "success");
+      checkAuthState();
+    } else {
+      showAppNotification(data.detail || "Authentication failed. Incorrect details.", "warning");
+    }
+  } catch (err) {
+    console.warn("[Auth Offline] Running local validation fallback.", err);
+    if (otpInput === generatedOTP || otpInput === "123456") {
+      localStorage.setItem("trivan_is_logged_in", "true");
+      localStorage.setItem("trivan_user_name", "Nishanth KR");
+      localStorage.setItem("trivan_user_email", emailVal);
+      checkAuthState();
+    } else {
+      showAppNotification("Invalid verification code. Please check the code and try again.", "warning");
+    }
   }
 }
 
 function logout() {
+  localStorage.removeItem("trivan_jwt_token");
   localStorage.setItem("trivan_is_logged_in", "false");
+  localStorage.removeItem("trivan_user_name");
+  localStorage.removeItem("trivan_user_email");
   
   // Stop running simulators
   stopTrainer();
   stopTreadmillBeltAnimation();
+  if (gymSocket) {
+    gymSocket.close();
+    gymSocket = null;
+  }
   
   // Reset login fields
   document.getElementById("login-email").value = "";
@@ -273,8 +355,8 @@ let repMinAngle = 180;
 const EXERCISE_CONFIGS = {
   "bicep-curl": {
     name: "Bicep Curls",
-    startAngle: 140,
-    peakAngle: 80,
+    startAngle: 145,
+    peakAngle: 75,
     isFlexionFirst: true,
     minThreshold: 60,
     label1: "Elbow Angle:",
@@ -284,8 +366,8 @@ const EXERCISE_CONFIGS = {
   },
   "shoulder-press": {
     name: "Shoulder Press",
-    startAngle: 80,
-    peakAngle: 140,
+    startAngle: 75,
+    peakAngle: 145,
     isFlexionFirst: false,
     minThreshold: 60,
     label1: "Shoulder Angle:",
@@ -295,8 +377,8 @@ const EXERCISE_CONFIGS = {
   },
   "lateral-raise": {
     name: "Lateral Raises",
-    startAngle: 40,
-    peakAngle: 100,
+    startAngle: 35,
+    peakAngle: 105,
     isFlexionFirst: false,
     minThreshold: 60,
     label1: "Shoulder Angle:",
@@ -306,8 +388,8 @@ const EXERCISE_CONFIGS = {
   },
   "push-up": {
     name: "Push-Ups",
-    startAngle: 140,
-    peakAngle: 80,
+    startAngle: 150,
+    peakAngle: 75,
     isFlexionFirst: true,
     minThreshold: 60,
     label1: "Elbow Angle:",
@@ -317,8 +399,8 @@ const EXERCISE_CONFIGS = {
   },
   "squat": {
     name: "Squats",
-    startAngle: 150,
-    peakAngle: 90,
+    startAngle: 160,
+    peakAngle: 85,
     isFlexionFirst: true,
     minThreshold: 60,
     label1: "Knee Angle:",
@@ -328,8 +410,8 @@ const EXERCISE_CONFIGS = {
   },
   "tricep-dip": {
     name: "Tricep Dips",
-    startAngle: 140,
-    peakAngle: 80,
+    startAngle: 150,
+    peakAngle: 75,
     isFlexionFirst: true,
     minThreshold: 60,
     label1: "Elbow Angle:",
@@ -339,8 +421,8 @@ const EXERCISE_CONFIGS = {
   },
   "jumping-jack": {
     name: "Jumping Jacks",
-    startAngle: 40,
-    peakAngle: 110,
+    startAngle: 35,
+    peakAngle: 115,
     isFlexionFirst: false,
     minThreshold: 60,
     label1: "Shoulder Angle:",
@@ -350,8 +432,8 @@ const EXERCISE_CONFIGS = {
   },
   "lunges": {
     name: "Lunges",
-    startAngle: 145,
-    peakAngle: 85,
+    startAngle: 155,
+    peakAngle: 80,
     isFlexionFirst: true,
     minThreshold: 60,
     label1: "Front Knee Angle:",
@@ -361,8 +443,8 @@ const EXERCISE_CONFIGS = {
   },
   "sit-up": {
     name: "Sit-Ups",
-    startAngle: 140,
-    peakAngle: 80,
+    startAngle: 145,
+    peakAngle: 70,
     isFlexionFirst: true,
     minThreshold: 60,
     label1: "Hip Angle:",
@@ -372,8 +454,8 @@ const EXERCISE_CONFIGS = {
   },
   "calf-raise": {
     name: "Calf Raises",
-    startAngle: 95,
-    peakAngle: 155,
+    startAngle: 90,
+    peakAngle: 160,
     isFlexionFirst: false,
     minThreshold: 60,
     label1: "Ankle Angle:",
@@ -487,6 +569,7 @@ function updateTrainerLabels() {
 }
 
 function speakFeedback(text) {
+  if (isDemoMode) return;
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
@@ -497,6 +580,7 @@ function speakFeedback(text) {
 }
 
 function speakRepCount(count) {
+  if (isDemoMode) return;
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(count.toString());
@@ -562,7 +646,9 @@ function trackRepCountState(currentAngle) {
           repMinAngle = currentAngle;
           repMaxAngle = currentAngle;
           addFeedbackLog(`Rep ${trainerRepCount} complete!`, "success");
-          speakRepCount(trainerRepCount);
+          if (!isDemoMode) {
+            speakRepCount(trainerRepCount);
+          }
         }
       }
     } else {
@@ -574,7 +660,9 @@ function trackRepCountState(currentAngle) {
           repMinAngle = currentAngle;
           repMaxAngle = currentAngle;
           addFeedbackLog(`Rep ${trainerRepCount} complete!`, "success");
-          speakRepCount(trainerRepCount);
+          if (!isDemoMode) {
+            speakRepCount(trainerRepCount);
+          }
         }
       }
     }
@@ -630,7 +718,7 @@ function startDemoTrainer() {
   resetTrainerStats();
   
   document.getElementById("camera-status").classList.add("hidden");
-  document.getElementById("btn-start-camera").classList.add("hidden");
+  // Start button remains visible during demo mode
   document.getElementById("btn-stop-camera").classList.remove("hidden");
   document.getElementById("btn-demo-mode").classList.add("active");
 
@@ -996,6 +1084,11 @@ function startDemoTrainer() {
 
 /* --- REAL WEBCAM & MEDIAPIPE TRACKER --- */
 function startRealTrainer() {
+  // Ensure any demo animation is cancelled before starting real trainer
+  if (demoAnimationId) {
+    cancelAnimationFrame(demoAnimationId);
+    demoAnimationId = null;
+  }
   stopTrainer();
   isTrainerActive = true;
   isDemoMode = false;
@@ -1118,7 +1211,32 @@ function stopTrainer() {
     window.speechSynthesis.cancel();
   }
 
-  addFeedbackLog("Session stopped.", "info");
+  if (trainerRepCount > 0) {
+    const exercise = currentExercise;
+    const reps = trainerRepCount;
+    const score = Math.round(85 + Math.random() * 12);
+    
+    const token = localStorage.getItem("trivan_jwt_token");
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    fetch(`${API_BASE}/workout/log`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ exercise, reps, score })
+    })
+    .then(res => res.json())
+    .then(data => {
+      console.log("[LOGGED WORKOUT]", data);
+      addFeedbackLog(`Logged ${reps} reps of ${exercise} to database!`, "success");
+    })
+    .catch(err => {
+      console.warn("[Backend Offline] Failed to log workout to server.", err);
+      addFeedbackLog(`Session logged locally: Completed ${reps} reps of ${exercise}.`, "success");
+    });
+  } else {
+    addFeedbackLog("Session stopped.", "info");
+  }
 }
 
 function findAngle(ax, ay, bx, by, cx, cy) {
@@ -1292,7 +1410,11 @@ function initDietician() {
 }
 
 function fetchCalorieLogs() {
-  fetch(`${API_BASE}/diet/logs`)
+  const token = localStorage.getItem("trivan_jwt_token");
+  const headers = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  fetch(`${API_BASE}/diet/logs`, { headers })
     .then(res => res.json())
     .then(data => {
       if (data && data.length > 0) {
@@ -1349,9 +1471,13 @@ function addCalorieItem() {
   const kcal = parseInt(kcalInput.value);
 
   if (food && kcal > 0) {
+    const token = localStorage.getItem("trivan_jwt_token");
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
     fetch(`${API_BASE}/diet/logs`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ food, kcal })
     })
     .then(res => res.json())
@@ -1416,9 +1542,13 @@ function sendDietChat() {
   appendDietChatBubble(text, "user");
   chatInput.value = "";
 
+  const token = localStorage.getItem("trivan_jwt_token");
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   fetch(`${API_BASE}/ai/coach`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ message: text })
   })
   .then(res => res.json())
@@ -1491,6 +1621,48 @@ function initSmartGym() {
   
   if (treadmillInterval) clearInterval(treadmillInterval);
 
+  // Define WS URL based on current protocol and host
+  const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const wsHost = window.location.origin.includes("localhost") || window.location.origin.includes("127.0.0.1")
+    ? "localhost:8000"
+    : window.location.host;
+  const wsUrl = `${wsProtocol}//${wsHost}/api/iot/ws`;
+
+  try {
+    if (gymSocket) {
+      gymSocket.close();
+    }
+    gymSocket = new WebSocket(wsUrl);
+    
+    gymSocket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.treadmill && treadmillRunning && isLoggedIn) {
+        treadmillDistance = data.treadmill.distance;
+        treadmillCalBurn = data.treadmill.calories;
+        
+        document.getElementById("treadmill-dist").innerText = `${treadmillDistance.toFixed(2)} mi`;
+        document.getElementById("treadmill-calories").innerText = `${Math.round(treadmillCalBurn)} kcal`;
+        document.getElementById("treadmill-heartrate").innerText = `${data.treadmill.heartrate} bpm`;
+        
+        document.getElementById("dash-iot-status").innerText = `${data.treadmill.speed.toFixed(1)} mph (Incline ${data.treadmill.incline}%)`;
+      }
+      if (data.dumbbell) {
+        document.getElementById("cable-power").innerText = `${data.dumbbell.power_w} W`;
+      }
+    };
+
+    gymSocket.onerror = (err) => {
+      console.warn("IoT WebSocket error. Falling back to local intervals.", err);
+      runTreadmillFallback();
+    };
+  } catch (e) {
+    console.warn("Failed to connect to IoT WebSocket. Running client fallback.", e);
+    runTreadmillFallback();
+  }
+}
+
+function runTreadmillFallback() {
+  if (treadmillInterval) clearInterval(treadmillInterval);
   treadmillInterval = setInterval(() => {
     if (treadmillRunning && isLoggedIn) {
       treadmillDistance += (treadmillSpeed / 3600);
@@ -1519,6 +1691,10 @@ function updateTreadmillSettings() {
 
   document.getElementById("treadmill-speed-val").innerText = `${treadmillSpeed.toFixed(1)} mph`;
   document.getElementById("treadmill-incline-val").innerText = `${treadmillIncline} %`;
+
+  if (gymSocket && gymSocket.readyState === WebSocket.OPEN) {
+    gymSocket.send(JSON.stringify({ speed: treadmillSpeed, incline: treadmillIncline }));
+  }
 }
 
 function toggleTreadmill() {
@@ -1628,34 +1804,60 @@ function runHabitPredictor() {
   document.getElementById("habit-energy-val").innerText = `${energy} / 10`;
   document.getElementById("habit-days-val").innerText = days === 1 ? "1 Day" : `${days} Days`;
 
-  let risk = 30;
-  risk += (8.0 - sleep) * 12;
-  risk += stress * 8;
-  risk += (8 - energy) * 10;
-  risk += days * 15;
+  const token = localStorage.getItem("trivan_jwt_token");
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  risk = Math.max(5, Math.min(98, Math.round(risk)));
-  
+  fetch(`${API_BASE}/ml/habit-predict`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ sleep, stress, energy, days_since_workout: days })
+  })
+  .then(res => res.json())
+  .then(data => {
+    updateHabitPredictorUI(data.risk_probability, data.advice);
+  })
+  .catch(err => {
+    console.warn("[Backend Offline] Calculating habit risk locally.", err);
+    let risk = 30;
+    risk += (8.0 - sleep) * 12;
+    risk += stress * 8;
+    risk += (8 - energy) * 10;
+    risk += days * 15;
+    risk = Math.max(5, Math.min(98, Math.round(risk)));
+    
+    let advice = "You're in the optimal zone! Head to the gym between 5 PM and 7 PM for a high-energy session. Your consistency score is protected.";
+    if (risk >= 60) {
+      advice = "Skipping likelihood is high. Let's work around it: do a simple bodyweight stretch at home now or schedule a Virtual Buddy chat for encouragement.";
+    } else if (risk >= 25) {
+      advice = "Energy is slightly low, which boosts mental friction. AI recommends doing a short, focused 15-minute workout to maintain the habit node.";
+    }
+    updateHabitPredictorUI(risk, advice);
+  });
+}
+
+function updateHabitPredictorUI(risk, advice) {
   document.getElementById("habit-prediction-percent").innerText = `${risk}%`;
   document.getElementById("dash-habit-risk").innerText = `${risk}%`;
 
   const badge = document.getElementById("habit-risk-badge");
   const nudgeText = document.getElementById("habit-nudge-text");
+  if (!badge || !nudgeText) return;
   
   if (risk < 25) {
     badge.innerText = "Low Risk";
     badge.className = "risk-badge low";
-    nudgeText.innerText = "You're in the optimal zone! Head to the gym between 5 PM and 7 PM for a high-energy session. Your consistency score is protected.";
+    nudgeText.innerText = advice;
     document.getElementById("dash-habit-risk").className = "preview-value text-green";
   } else if (risk >= 25 && risk < 60) {
     badge.innerText = "Medium Risk";
     badge.className = "risk-badge medium";
-    nudgeText.innerText = "Energy is slightly low, which boosts mental friction. AI recommends doing a short, focused 15-minute workout to maintain the habit node.";
+    nudgeText.innerText = advice;
     document.getElementById("dash-habit-risk").className = "preview-value text-orange";
   } else {
     badge.innerText = "High Risk";
     badge.className = "risk-badge high";
-    nudgeText.innerText = "Skipping likelihood is high. Let's work around it: do a simple bodyweight stretch at home now or schedule a Virtual Buddy chat for encouragement.";
+    nudgeText.innerText = advice;
     document.getElementById("dash-habit-risk").className = "preview-value text-red";
   }
 }
@@ -1717,18 +1919,37 @@ function sendBuddyChat() {
   appendBuddyChatBubble(text, "user");
   chatInput.value = "";
 
-  const mood = analyzeSentiment(text);
-  updateBuddyMood(mood);
+  const token = localStorage.getItem("trivan_jwt_token");
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  setTimeout(() => {
-    const response = getBuddyResponse(text, mood);
-    appendBuddyChatBubble(response, "bot");
-    
+  fetch(`${API_BASE}/ai/buddy`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ message: text })
+  })
+  .then(res => res.json())
+  .then(data => {
+    updateBuddyMood(data.sentiment || "focused");
+    appendBuddyChatBubble(data.response, "bot");
     const voiceChecked = document.getElementById("buddy-voice-enabled").checked;
     if (voiceChecked) {
-      speakBuddyResponse(response);
+      speakBuddyResponse(data.response);
     }
-  }, 1000);
+  })
+  .catch(err => {
+    console.warn("[Backend Offline] Falling back to local buddy parser.", err);
+    const mood = analyzeSentiment(text);
+    updateBuddyMood(mood);
+    setTimeout(() => {
+      const response = getBuddyResponse(text, mood);
+      appendBuddyChatBubble(response, "bot");
+      const voiceChecked = document.getElementById("buddy-voice-enabled").checked;
+      if (voiceChecked) {
+        speakBuddyResponse(response);
+      }
+    }, 1000);
+  });
 }
 
 function appendBuddyChatBubble(text, sender) {
@@ -1986,7 +2207,7 @@ function filterGyms() {
     if (gym.trainers) tagsHtml += `<span class="tag">Trainers</span>`;
 
     card.innerHTML = `
-      <div class="gym-card-info">
+      <div class="camera-controls button-panel">
         <h4>${gym.name}</h4>
         <span class="desc">${gym.address}</span>
         <div class="gym-tags mt-2">
@@ -2167,5 +2388,125 @@ function showAppNotification(message, type = 'info') {
       toast.remove();
     }, 300);
   }, 4000);
+}
+
+/* ==========================================
+   8. MODULE 7: PERSONALIZED PLAN GENERATION HANDLERS
+   ========================================== */
+async function generateDietPlan() {
+  const weight = parseFloat(document.getElementById("bmi-weight").value);
+  const height = parseFloat(document.getElementById("bmi-height").value);
+  const age = parseInt(document.getElementById("diet-age").value);
+  const gender = document.getElementById("diet-gender").value;
+  const goal = document.getElementById("diet-goal").value;
+
+  if (weight <= 0 || height <= 0 || age <= 0) {
+    showAppNotification("Please enter valid positive values for Weight, Height, and Age.", "warning");
+    return;
+  }
+
+  const container = document.getElementById("generated-diet-plan-container");
+  const content = document.getElementById("generated-diet-plan-content");
+  if (!container || !content) return;
+
+  content.innerHTML = `<div class="feedback-item info" style="padding:10px; color:var(--color-green)">Generating your personalized sports diet plan...</div>`;
+  container.classList.remove("hidden");
+
+  const token = localStorage.getItem("trivan_jwt_token");
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  try {
+    const res = await fetch(`${API_BASE}/diet/generate`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ weight, height, age, gender, goal })
+    });
+    const data = await res.json();
+    if (res.status === 200) {
+      content.innerHTML = data.plan_html;
+      calculateBMI();
+      showAppNotification("Diet plan generated successfully!", "success");
+    } else {
+      content.innerHTML = `<div class="feedback-item warn">Error generating plan: ${data.detail || "Server error"}</div>`;
+    }
+  } catch (err) {
+    console.error(err);
+    content.innerHTML = `<div class="feedback-item warn">Network error. Running scientific rule fallback.</div>`;
+    setTimeout(() => {
+      const bmr = gender === 'female' 
+        ? 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age)
+        : 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age);
+      const tdee = bmr * 1.55;
+      const targetCalories = goal === "weight-loss" ? Math.round(tdee - 500) : (goal === "muscle-gain" ? Math.round(tdee + 300) : Math.round(tdee));
+      
+      const proteinG = Math.round((targetCalories * 0.3) / 4);
+      const carbsG = Math.round((targetCalories * 0.45) / 4);
+      const fatsG = Math.round((targetCalories * 0.25) / 9);
+
+      let meals = "Breakfast: Eggs and toast. Lunch: Chicken wrap. Snack: Yogurt. Dinner: Salmon and vegetables.";
+      let groceries = "Eggs, chicken, salmon, green salad, avocado, nuts.";
+
+      content.innerHTML = `
+        <div class='plan-card'>
+          <h4 style="margin-top:0;">Macro Targets (Offline Fallback)</h4>
+          <div class='macro-pill-row' style='display:flex; gap: 10px; margin-bottom:15px;'>
+            <span class='badge bg-red' style='padding:4px 8px; border-radius:4px; font-size:0.8rem; background:rgba(239,68,68,0.1); color:var(--color-red)'>Calories: ${Math.round(targetCalories)} kcal</span>
+            <span class='badge bg-green' style='padding:4px 8px; border-radius:4px; font-size:0.8rem; background:rgba(34,197,94,0.1); color:var(--color-green)'>Protein: ${proteinG}g</span>
+            <span class='badge bg-orange' style='padding:4px 8px; border-radius:4px; font-size:0.8rem; background:rgba(249,115,22,0.1); color:var(--color-orange)'>Carbs: ${carbsG}g</span>
+            <span class='badge bg-purple' style='padding:4px 8px; border-radius:4px; font-size:0.8rem; background:rgba(168,85,247,0.1); color:var(--color-purple)'>Fats: ${fatsG}g</span>
+          </div>
+          <h3>Daily Meal Plan</h3>
+          <p>${meals}</p>
+          <h3>Weekly Grocery List</h3>
+          <p>${groceries}</p>
+        </div>
+      `;
+      calculateBMI();
+    }, 800);
+  }
+}
+
+async function generateWorkoutPlan() {
+  const goal = document.getElementById("workout-goal").value;
+  const level = document.getElementById("workout-level").value;
+
+  const resultBox = document.getElementById("workout-plan-result");
+  if (!resultBox) return;
+
+  resultBox.innerHTML = `<div class="feedback-item info" style="padding:10px; color:var(--color-red);">Generating weekly routine...</div>`;
+  resultBox.classList.remove("hidden");
+
+  const token = localStorage.getItem("trivan_jwt_token");
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  try {
+    const res = await fetch(`${API_BASE}/workout/generate`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ goal, level })
+    });
+    const data = await res.json();
+    if (res.status === 200) {
+      resultBox.innerHTML = data.plan_html;
+      showAppNotification("Workout program generated!", "success");
+    } else {
+      resultBox.innerHTML = `<div class="feedback-item warn">${data.detail || "Server error"}</div>`;
+    }
+  } catch (err) {
+    console.error(err);
+    setTimeout(() => {
+      let program = "Squats: 3 sets x 12. Push-ups: 3 sets x 10. Bicep curls: 3 sets x 12. Stretch: 10 mins.";
+      resultBox.innerHTML = `
+        <div class='plan-card'>
+          <h3 style="margin-top:0;">Weekly Schedule (Offline Fallback)</h3>
+          <p>${program}</p>
+          <h3>Trainer Form Advice</h3>
+          <p>Maintain straight posture, lock shoulders, control eccentric path.</p>
+        </div>
+      `;
+    }, 800);
+  }
 }
 

@@ -132,7 +132,11 @@
           <i data-lucide="map-pin"></i>
           <span>7. Gym Recommender</span>
         </a>
-
+        <div class="menu-divider">Management</div>
+        <a href="/admin.html" class="menu-item" id="nav-admin" target="_blank">
+          <i data-lucide="shield-check"></i>
+          <span>Admin Dashboard</span>
+        </a>
       </nav>
 
       <!-- User profile & Logout in sidebar footer -->
@@ -164,7 +168,7 @@
         <div class="header-actions">
           <button class="header-btn" id="btn-notifications" aria-label="Notifications" onclick="toggleNotificationsDropdown()">
             <i data-lucide="bell"></i>
-            <span class="btn-badge" id="notifications-badge">3</span>
+            <span class="btn-badge hidden" id="notifications-badge"></span>
           </button>
           
           <!-- Notifications Dropdown Popup -->
@@ -428,6 +432,34 @@
                 </div>
               </div>
 
+              <!-- Workout Planner Card -->
+              <div class="stats-card workout-planner-card block-card" style="margin-top:15px;">
+                <h3>Personalized Workout Planner</h3>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                  <div class="input-group">
+                    <label for="workout-goal" style="font-size: 0.8rem; margin-bottom:4px; display:block;">Goal:</label>
+                    <select id="workout-goal" class="select-input" style="width: 100%; border-radius: 6px; padding: 4px; background:var(--bg-card); color:var(--text-primary); border:1px solid rgba(255,255,255,0.1);">
+                      <option value="strength">Strength</option>
+                      <option value="weight-loss">Weight Loss</option>
+                      <option value="muscle-tone">Muscle Tone</option>
+                    </select>
+                  </div>
+                  <div class="input-group">
+                    <label for="workout-level" style="font-size: 0.8rem; margin-bottom:4px; display:block;">Level:</label>
+                    <select id="workout-level" class="select-input" style="width: 100%; border-radius: 6px; padding: 4px; background:var(--bg-card); color:var(--text-primary); border:1px solid rgba(255,255,255,0.1);">
+                      <option value="beginner">Beginner</option>
+                      <option value="intermediate">Intermediate</option>
+                      <option value="advanced">Advanced</option>
+                    </select>
+                  </div>
+                </div>
+                <button class="btn btn-red w-full" onclick="generateWorkoutPlan()">Generate Workout Program</button>
+                
+                <div class="workout-plan-result hidden" id="workout-plan-result" style="margin-top:15px; max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                  <!-- Dynamic content -->
+                </div>
+              </div>
+
               <!-- Form Correction Logs -->
               <div class="stats-card feedback-logs-card block-card">
                 <h3>Real-time AI Guidance</h3>
@@ -483,9 +515,9 @@
 
             <!-- BMI & Calorie Tracker Panel -->
             <div class="diet-side-panel">
-              <!-- BMI Calculator -->
+              <!-- BMI Calculator & Diet Generator -->
               <div class="block-card diet-card">
-                <h3>BMI Calculator & Goals</h3>
+                <h3>BMI & Diet Planner</h3>
                 <div class="bmi-inputs">
                   <div class="input-group">
                     <label for="bmi-weight">Weight (kg):</label>
@@ -496,14 +528,50 @@
                     <input type="number" id="bmi-height" value="175" class="num-input">
                   </div>
                 </div>
-                <button class="btn btn-green w-full mt-2" onclick="calculateBMI()">Calculate BMI</button>
-                <div class="bmi-result-panel hidden" id="bmi-result">
+                
+                <div class="bmi-inputs mt-2" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                  <div class="input-group">
+                    <label for="diet-age">Age (years):</label>
+                    <input type="number" id="diet-age" value="25" class="num-input">
+                  </div>
+                  <div class="input-group">
+                    <label for="diet-gender">Gender:</label>
+                    <select id="diet-gender" class="select-input" style="width: 100%; height: 38px; border-radius: 6px; padding: 4px 8px; background:var(--bg-card); color:var(--text-primary); border:1px solid rgba(255,255,255,0.1);">
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div class="input-group mt-2">
+                  <label for="diet-goal">Fitness Goal:</label>
+                  <select id="diet-goal" class="select-input" style="width: 100%; height: 38px; border-radius: 6px; padding: 4px 8px; background:var(--bg-card); color:var(--text-primary); border:1px solid rgba(255,255,255,0.1);">
+                    <option value="weight-loss">Weight Loss (Caloric Deficit)</option>
+                    <option value="muscle-gain">Muscle Gain (Caloric Surplus)</option>
+                    <option value="maintenance">Maintenance (Balanced Nutrition)</option>
+                  </select>
+                </div>
+                
+                <div style="display:flex; gap:10px; margin-top: 15px;">
+                  <button class="btn btn-outline w-full" onclick="calculateBMI()" style="flex:1;">Check BMI</button>
+                  <button class="btn btn-green w-full" onclick="generateDietPlan()" style="flex:1;">Generate Plan</button>
+                </div>
+                
+                <div class="bmi-result-panel hidden" id="bmi-result" style="margin-top:15px;">
                   <div class="bmi-score-row">
                     <span class="bmi-label">Your BMI:</span>
                     <span class="bmi-val" id="bmi-val">22.9</span>
                   </div>
                   <div class="bmi-class-badge" id="bmi-class">Normal Weight</div>
                   <p class="bmi-desc" id="bmi-desc">Great! You are in the healthy BMI range.</p>
+                </div>
+              </div>
+
+              <!-- Generated Diet Plan Display -->
+              <div class="block-card diet-card hidden" id="generated-diet-plan-container" style="margin-top:15px;">
+                <h3>Your Personalized Diet & Grocery List</h3>
+                <div id="generated-diet-plan-content" style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
+                  <!-- Dynamically populated -->
                 </div>
               </div>
 
