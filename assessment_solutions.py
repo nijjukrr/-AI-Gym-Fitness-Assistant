@@ -97,3 +97,34 @@ print()
 
 print("=================== All Questions Completed ===================")
 
+import urllib.request
+import json
+import os
+print("\n=== Remote Diagnostics ===")
+try:
+    url = "https://router.huggingface.co/v1/chat/completions"
+    hf_key = os.getenv("HUGGINGFACE_API_KEY")
+    headers = {
+        "Authorization": f"Bearer {hf_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "Qwen/Qwen2.5-7B-Instruct",
+        "messages": [
+            {"role": "system", "content": "You are a helpful fitness coach."},
+            {"role": "user", "content": "give me a 1-sentence tip for muscle gain"}
+        ],
+        "max_tokens": 50,
+        "temperature": 0.7
+    }
+    req_data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=req_data, headers=headers, method="POST")
+    with urllib.request.urlopen(req, timeout=15) as res:
+        print(f"Status: {res.status}")
+        print("Response body:")
+        print(res.read().decode())
+except urllib.error.HTTPError as e:
+    print(f"Request failed with HTTP Error {e.code}: {e.read().decode()}")
+except Exception as e:
+    print(f"Request failed: {e}")
+
