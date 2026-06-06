@@ -2057,7 +2057,7 @@ function refreshAnalyzerData() {
   addFeedbackLog("Performance analytics dashboard updated.", "success");
 }
 
-function renderCharts(forceRefresh = false) {
+async function renderCharts(forceRefresh = false) {
   const pCtx = document.getElementById("performanceChart")?.getContext("2d");
   const rCtx = document.getElementById("rangeChart")?.getContext("2d");
 
@@ -2070,22 +2070,45 @@ function renderCharts(forceRefresh = false) {
   const gridColor = isLight ? "#e4e4e7" : "#27272a";
   const labelColor = isLight ? "#71717a" : "#a1a1aa";
 
-  const scoreData = forceRefresh 
-    ? [80, 84, 83, 89, 91, 95] 
-    : [78, 82, 85, 87, 90, 92];
-    
-  const rangeData = forceRefresh
-    ? [125, 130, 138, 142, 142, 145, 140, 142, 144, 145]
-    : [120, 128, 135, 140, 142, 141, 139, 142, 142, 142];
+  let scores = [78, 82, 85, 87, 90, 92];
+  let reps = [8, 10, 8, 12, 10, 11, 12, 10, 11, 12];
+  let repLabels = ["Rep 1", "Rep 2", "Rep 3", "Rep 4", "Rep 5", "Rep 6", "Rep 7", "Rep 8", "Rep 9", "Rep 10"];
+
+  const token = localStorage.getItem("trivan_jwt_token");
+  const headers = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  try {
+    const res = await fetch(`${API_BASE}/workout/logs`, { headers });
+    if (res.status === 200) {
+      const logs = await res.json();
+      if (logs && logs.length > 0) {
+        logs.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        
+        scores = logs.map(l => l.score || 90);
+        if (scores.length > 6) {
+          scores = scores.slice(-6);
+        }
+        
+        reps = logs.map(l => l.reps || 10);
+        if (reps.length > 10) {
+          reps = reps.slice(-10);
+        }
+        repLabels = reps.map((_, i) => `Set ${i + 1}`);
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to fetch workout logs for performance charts, using fallback.", err);
+  }
 
   // Red theme for weekly performance
   perfChartInstance = new Chart(pCtx, {
     type: "line",
     data: {
-      labels: ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"],
+      labels: scores.map((_, i) => `Session ${i + 1}`),
       datasets: [{
-        label: "Efficiency Score",
-        data: scoreData,
+        label: "Pose Accuracy Score",
+        data: scores,
         borderColor: "#ef4444",
         backgroundColor: "rgba(239, 68, 68, 0.1)",
         tension: 0.2,
@@ -2116,14 +2139,14 @@ function renderCharts(forceRefresh = false) {
     }
   });
 
-  // Green theme for range of motion
+  // Green theme for reps completed
   rangeChartInstance = new Chart(rCtx, {
     type: "bar",
     data: {
-      labels: ["Rep 1", "Rep 2", "Rep 3", "Rep 4", "Rep 5", "Rep 6", "Rep 7", "Rep 8", "Rep 9", "Rep 10"],
+      labels: repLabels,
       datasets: [{
-        label: "Knee Angle Reach",
-        data: rangeData,
+        label: "Reps Completed",
+        data: reps,
         backgroundColor: "rgba(34, 197, 94, 0.75)",
         borderColor: "#22c55e",
         borderWidth: 1,
@@ -2141,8 +2164,8 @@ function renderCharts(forceRefresh = false) {
           ticks: { color: labelColor, font: { family: "Plus Jakarta Sans" } }
         },
         y: {
-          min: 90,
-          max: 160,
+          min: 0,
+          max: 25,
           grid: { color: gridColor },
           ticks: { color: labelColor, font: { family: "Plus Jakarta Sans" } }
         }
@@ -2155,15 +2178,47 @@ function renderCharts(forceRefresh = false) {
    8. MODULE 7: GYM RECOMMENDER & PLANNER
    ========================================== */
 const gymDatabase = [
-  { name: "Gold's Fitness Hub", distance: 2.1, rating: 4.8, pool: true, sauna: true, trainers: true, match: 96, address: "502 Cyber Square Ave, Metro City" },
-  { name: "Iron & Steel Barbell Gym", distance: 4.5, rating: 4.6, pool: false, sauna: false, trainers: true, match: 88, address: "88 Iron Parkway Rd, East District" },
-  { name: "Aqua-Zen Wellness Resort", distance: 7.2, rating: 4.9, pool: true, sauna: true, trainers: false, match: 92, address: "12 Wellness Dr, Bay Area" },
-  { name: "Velocity Cardio & HIIT Club", distance: 8.9, rating: 4.2, pool: false, sauna: true, trainers: true, match: 81, address: "204 Speed Lane, High Rise District" },
-  { name: "Powerhouse Elite Club", distance: 12.4, rating: 4.7, pool: true, sauna: false, trainers: true, match: 85, address: "707 Heavy Stack Way, West Industrial" }
+  { name: "Gold's Fitness Hub", baseLat: 12.965, baseLng: 77.585, rating: 4.8, pool: true, sauna: true, trainers: true, match: 92, address: "502 Cyber Square Ave, Metro City", baseDistance: 2.1 },
+  { name: "Iron & Steel Barbell Gym", baseLat: 12.952, baseLng: 77.610, rating: 4.6, pool: false, sauna: false, trainers: true, match: 86, address: "88 Iron Parkway Rd, East District", baseDistance: 4.5 },
+  { name: "Aqua-Zen Wellness Resort", baseLat: 12.990, baseLng: 77.620, rating: 4.9, pool: true, sauna: true, trainers: false, match: 90, address: "12 Wellness Dr, Bay Area", baseDistance: 7.2 },
+  { name: "Velocity Cardio & HIIT Club", baseLat: 12.940, baseLng: 77.550, rating: 4.2, pool: false, sauna: true, trainers: true, match: 80, address: "204 Speed Lane, High Rise District", baseDistance: 8.9 },
+  { name: "Powerhouse Elite Club", baseLat: 13.020, baseLng: 77.510, rating: 4.7, pool: true, sauna: false, trainers: true, match: 84, address: "707 Heavy Stack Way, West Industrial", baseDistance: 12.4 }
 ];
 
+let userCoords = null;
+
+function getHaversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 3958.8; // Earth radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
 function initGymRecommender() {
-  filterGyms();
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        userCoords = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        console.log("[Geolocation Success] User coords set:", userCoords);
+        filterGyms();
+      },
+      (err) => {
+        console.warn("[Geolocation Warning] Failed or denied, using Bangalore fallback:", err);
+        userCoords = { lat: 12.9716, lng: 77.5946 };
+        filterGyms();
+      }
+    );
+  } else {
+    filterGyms();
+  }
 }
 
 function filterGyms() {
@@ -2178,8 +2233,40 @@ function filterGyms() {
 
   resultsContainer.innerHTML = "";
 
-  const filtered = gymDatabase.filter(gym => {
-    if (gym.distance > maxDistance) return false;
+  // Get active workout goal for personalized matching
+  const workoutGoal = document.getElementById("workout-goal")?.value || "maintenance";
+
+  const evaluatedGyms = gymDatabase.map(gym => {
+    let dist = gym.baseDistance;
+    if (userCoords) {
+      dist = parseFloat(getHaversineDistance(userCoords.lat, userCoords.lng, gym.baseLat, gym.baseLng).toFixed(1));
+    }
+    
+    // Dynamic Match Score calculation based on active user fitness goal
+    let matchScore = gym.match;
+    if (workoutGoal === "muscle-gain") {
+      if (gym.name.includes("Barbell") || gym.name.includes("Elite")) {
+        matchScore = Math.min(99, matchScore + 10);
+      } else if (gym.trainers) {
+        matchScore = Math.min(99, matchScore + 5);
+      }
+    } else if (workoutGoal === "weight-loss") {
+      if (gym.name.includes("Cardio") || gym.name.includes("HIIT")) {
+        matchScore = Math.min(99, matchScore + 10);
+      } else if (gym.sauna) {
+        matchScore = Math.min(99, matchScore + 5);
+      }
+    } else if (workoutGoal === "maintenance") {
+      if (gym.pool && gym.sauna) {
+        matchScore = Math.min(99, matchScore + 8);
+      }
+    }
+
+    return { ...gym, calculatedDistance: dist, calculatedMatch: matchScore };
+  });
+
+  const filtered = evaluatedGyms.filter(gym => {
+    if (gym.calculatedDistance > maxDistance) return false;
     
     if (typeFilter === "pool" && !gym.pool) return false;
     if (typeFilter === "sauna" && !gym.sauna) return false;
@@ -2187,6 +2274,9 @@ function filterGyms() {
 
     return true;
   });
+
+  // Sort by calculated distance
+  filtered.sort((a, b) => a.calculatedDistance - b.calculatedDistance);
 
   if (filtered.length === 0) {
     resultsContainer.innerHTML = `
@@ -2215,8 +2305,8 @@ function filterGyms() {
         </div>
       </div>
       <div class="gym-card-right">
-        <span class="dist">${gym.distance} miles</span>
-        <span class="match">${gym.match}% Match Rating</span>
+        <span class="dist">${gym.calculatedDistance} miles</span>
+        <span class="match">${gym.calculatedMatch}% Match Rating</span>
       </div>
     `;
 
