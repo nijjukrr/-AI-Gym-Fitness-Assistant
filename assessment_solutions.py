@@ -130,6 +130,9 @@ try:
         print(f"Status: {res.status}")
         print("Response body:")
         print(res.read().decode())
+except urllib.error.HTTPError as e:
+    print(f"Urllib request failed with HTTP Error {e.code}:")
+    print(e.read().decode())
 except Exception as e:
     print(f"Urllib request failed: {e}")
 
