@@ -281,8 +281,11 @@ function initRouter() {
 
   menuItems.forEach(item => {
     item.addEventListener("click", (e) => {
+      const href = item.getAttribute("href");
+      // Skip external links (e.g., admin.html) — let them navigate normally
+      if (!href || !href.startsWith("#")) return;
       e.preventDefault();
-      const targetTabId = item.getAttribute("href").substring(1);
+      const targetTabId = href.substring(1);
       navigateToTab(targetTabId);
       window.location.hash = targetTabId;
     });
