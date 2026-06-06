@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 # Set dummy environment variables for testing
 os.environ.setdefault("MONGODB_URI", "mongodb://localhost:27017/testdb")
-os.environ.setdefault("OPENAI_API_KEY", "test_key")
+os.environ.setdefault("HUGGINGFACE_API_KEY", "test_key")
 os.environ.setdefault("JWT_SECRET", "test_secret_key")
 
 # Import the FastAPI app

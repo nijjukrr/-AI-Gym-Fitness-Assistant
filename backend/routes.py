@@ -251,80 +251,94 @@ def get_haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -
 @router.get("/gyms/search")
 async def search_gyms(
     location: str = Query(..., description="Latitude,Longitude"),
-    radius_miles: float = Query(10.0, description="Radius in miles"),
+    radius_miles: float = Query(5.0),
     current_user: dict = Depends(get_current_user)
 ):
-    api_key = os.getenv("GOOGLE_MAPS_API_KEY")
-    if not api_key or api_key.strip() == "" or api_key == "YOUR_GOOGLE_MAPS_API_KEY":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Location services unavailable. Please try again later."
-        )
-        
-    radius_meters = int(radius_miles * 1609.34)
-    url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
-    params = {
-        "location": location,
-        "radius": radius_meters,
-        "type": "gym",
-        "key": api_key
-    }
-    
     try:
         import httpx
-        async with httpx.AsyncClient() as client:
-            res = await client.get(url, params=params, timeout=10.0)
+        lat_str, lng_str = location.split(",")
+        user_lat = float(lat_str)
+        user_lng = float(lng_str)
+        radius_meters = int(radius_miles * 1609.34)
+
+        overpass_url = "https://overpass-api.de/api/interpreter"
+        query = f"""
+        [out:json][timeout:25];
+        (
+          node["leisure"="fitness_centre"](around:{radius_meters},{user_lat},{user_lng});
+          node["amenity"="gym"](around:{radius_meters},{user_lat},{user_lng});
+          way["leisure"="fitness_centre"](around:{radius_meters},{user_lat},{user_lng});
+          way["amenity"="gym"](around:{radius_meters},{user_lat},{user_lng});
+        );
+        out center;
+        """
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            res = await client.post(
+                overpass_url,
+                data={"data": query},
+                headers={"Content-Type": "application/x-www-form-urlencoded"}
+            )
+
             if res.status_code != 200:
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
+                    status_code=400,
                     detail="Location services unavailable. Please try again later."
                 )
-            
+
             data = res.json()
-            if data.get("status") in ["REQUEST_DENIED", "INVALID_REQUEST", "OVER_QUERY_LIMIT"]:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Location services unavailable. Please try again later."
-                )
-                
-            results = data.get("results", [])
+            elements = data.get("elements", [])
+
             gyms = []
-            
-            lat_str, lng_str = location.split(",")
-            user_lat = float(lat_str)
-            user_lng = float(lng_str)
-            
-            for item in results:
-                g_lat = item["geometry"]["location"]["lat"]
-                g_lng = item["geometry"]["location"]["lng"]
+            for item in elements:
+                tags = item.get("tags", {})
+                name = tags.get("name")
+                if not name:
+                    continue
+
+                if item["type"] == "node":
+                    g_lat = item["lat"]
+                    g_lng = item["lon"]
+                else:
+                    center = item.get("center", {})
+                    g_lat = center.get("lat", user_lat)
+                    g_lng = center.get("lon", user_lng)
+
                 dist = get_haversine_distance(user_lat, user_lng, g_lat, g_lng)
-                
-                place_id = item.get("place_id", "")
-                place_id_hash = hash(place_id)
-                
-                pool = (place_id_hash % 3 == 0)
-                sauna = (place_id_hash % 4 == 0)
-                trainers = (place_id_hash % 2 == 0)
-                rating = item.get("rating", 4.5)
-                
+
+                place_hash = hash(name)
+                pool = (place_hash % 3 == 0)
+                sauna = (place_hash % 4 == 0)
+                trainers = (place_hash % 2 == 0)
+                rating = float(tags.get("stars", 0)) or round(3.5 + (place_hash % 30) / 20, 1)
+
                 gyms.append({
-                    "name": item.get("name"),
+                    "name": name,
+                    "address": tags.get("addr:street", "Nearby Location"),
                     "calculatedDistance": round(dist, 1),
-                    "calculatedMatch": int(min(99, 70 + rating * 5 + (5 if pool else 0))),
-                    "address": item.get("vicinity", "Nearby Location"),
+                    "calculatedMatch": int(min(99, 70 + rating * 5)),
                     "pool": pool,
                     "sauna": sauna,
                     "trainers": trainers,
-                    "rating": rating
+                    "rating": round(rating, 1)
                 })
+
+            gyms.sort(key=lambda x: x["calculatedDistance"])
+
+            if not gyms:
+                raise HTTPException(
+                    status_code=404,
+                    detail="No gyms found nearby. Try increasing your search radius."
+                )
+
             return gyms
-            
+
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[Google Places Search Exception] {e}")
+        print(f"[OSM Gym Search Error] {e}")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=400,
             detail="Location services unavailable. Please try again later."
         )
 
@@ -378,33 +392,46 @@ async def call_gemini(prompt: str) -> Optional[str]:
         print(f"[Gemini Error] {e}")
     return None
 
-async def call_openai(prompt: str, system_prompt: str) -> Optional[str]:
-    openai_key = os.getenv("OPENAI_API_KEY")
-    if not openai_key:
+async def call_huggingface(message: str, system_prompt: str) -> str:
+    import httpx
+    api_key = os.getenv("HUGGINGFACE_API_KEY")
+    if not api_key:
         return None
-    try:
-        import httpx
-        headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
-        payload = {
-            "model": "gpt-3.5-turbo",
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            "max_tokens": 150
+    
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "inputs": f"<s>[INST] {system_prompt}\n\n{message} [/INST]",
+        "parameters": {
+            "max_new_tokens": 300,
+            "temperature": 0.7,
+            "return_full_text": False
         }
-        async with httpx.AsyncClient() as client:
-            res = await client.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload, timeout=6.0)
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            res = await client.post(
+                "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3",
+                headers=headers,
+                json=payload
+            )
             if res.status_code == 200:
-                return res.json()["choices"][0]["message"]["content"]
+                data = res.json()
+                if isinstance(data, list) and data:
+                    return data[0].get("generated_text", "").strip()
+        return None
     except Exception as e:
-        print(f"[OpenAI Error] {e}")
-    return None
+        print(f"[HuggingFace Error] {e}")
+        return None
 
 @router.post("/ai/coach")
 async def calorie_coach_chat(req: ChatRequest):
     system_prompt = "You are NutriCoach AI, a premium, knowledgeable dietitian and calorie advisor for TRIVAN'S TECH. Give concise, bulleted nutrition advice."
-    resp = await call_openai(req.message, system_prompt)
+    resp = await call_huggingface(req.message, system_prompt)
     if not resp:
         return {"response": "AI unavailable, please try again"}
     return {"response": resp}
@@ -420,7 +447,7 @@ async def motivation_buddy_chat(req: ChatRequest):
     elif any(word in query for word in ["ready", "crush", "let's go", "excited", "hype"]):
         sentiment = "excited"
 
-    resp = await call_openai(req.message, system_prompt)
+    resp = await call_huggingface(req.message, system_prompt)
     if not resp:
         return {"response": "AI unavailable, please try again", "sentiment": sentiment}
     return {"response": resp, "sentiment": sentiment}
