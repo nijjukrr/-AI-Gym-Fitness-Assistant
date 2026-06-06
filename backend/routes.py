@@ -135,28 +135,21 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 # DIET / CALORIES ENDPOINTS
 # ----------------------------------------------------
 @router.get("/diet/logs")
-async def get_calories(current_user: dict = Depends(get_current_user)):
-    # Persist logs linked to the current logged-in user
-    logs = find_documents("calories", {"email": current_user.get("email")})
-    # If no logs, return defaults from memory for the user
-    if not logs:
-        return [
-            {"food": "Oatmeal with Almonds", "kcal": 350, "timestamp": time.time() - 3600},
-            {"food": "Grilled Chicken Breast & Rice", "kcal": 650, "timestamp": time.time() - 7200},
-            {"food": "Whey Protein Shake", "kcal": 250, "timestamp": time.time() - 10800},
-            {"food": "Greek Yogurt with Berries", "kcal": 200, "timestamp": time.time() - 14400}
-        ]
-    return logs
+async def get_diet_logs(current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user.get("_id", current_user.get("email")))
+    logs = find_documents("diet_logs", {"user_id": user_id})
+    return logs if logs else []
 
 @router.post("/diet/logs")
 async def add_calorie(item: CalorieItem, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user.get("_id", current_user.get("email")))
     log_data = {
-        "email": current_user.get("email"),
+        "user_id": user_id,
         "food": item.food,
         "kcal": item.kcal,
         "timestamp": time.time()
     }
-    insert_document("calories", log_data)
+    insert_document("diet_logs", log_data)
     return {"status": "success", "data": item}
 
 @router.post("/diet/generate")
@@ -207,8 +200,9 @@ async def predict_habit(inputs: HabitInput, current_user: dict = Depends(get_cur
 @router.post("/workout/logs")
 async def log_workout(req: WorkoutSessionLog, current_user: dict = Depends(get_current_user)):
     perf_score = req.performance_score if req.performance_score is not None else (req.score if req.score is not None else 85)
+    user_id = str(current_user.get("_id", current_user.get("email")))
     log_data = {
-        "user_id": str(current_user.get("_id")),
+        "user_id": user_id,
         "exercise": req.exercise,
         "reps": req.reps,
         "sets": req.sets,
@@ -225,7 +219,7 @@ async def log_workout_legacy(req: WorkoutSessionLog, current_user: dict = Depend
 
 @router.get("/workout/logs")
 async def get_workout_logs(current_user: dict = Depends(get_current_user)):
-    user_id = str(current_user.get("_id"))
+    user_id = str(current_user.get("_id", current_user.get("email")))
     logs = find_documents("workouts", {"user_id": user_id})
     return logs
 
@@ -530,7 +524,7 @@ async def get_admin_stats():
     workouts = find_documents("workouts")
     total_workouts = len(workouts)
     
-    calories = find_documents("calories")
+    calories = find_documents("diet_logs")
     total_calories = sum(int(item.get("kcal", 0)) for item in calories)
     
     habits = find_documents("habits")
@@ -553,49 +547,14 @@ async def get_admin_users():
 
 @router.get("/admin/workouts")
 async def get_admin_workouts():
-    # Return workouts. If empty, return some default history for Plotly rendering
     res = find_documents("workouts")
-    if not res:
-        return [
-            {"exercise": "Squats", "reps": 12, "score": 95, "timestamp": time.time() - 86400 * 3},
-            {"exercise": "Squats", "reps": 10, "score": 90, "timestamp": time.time() - 86400 * 3},
-            {"exercise": "Bicep Curls", "reps": 15, "score": 92, "timestamp": time.time() - 86400 * 2},
-            {"exercise": "Shoulder Press", "reps": 10, "score": 88, "timestamp": time.time() - 86400 * 1},
-            {"exercise": "Push-Ups", "reps": 20, "score": 95, "timestamp": time.time()}
-        ]
-    return res
+    return res if res else []
 
 @router.get("/admin/habits")
 async def get_admin_habits():
     return find_documents("habits")
 
-# ----------------------------------------------------
-# EDUCATIONAL ASSESSMENT RUNNER ENDPOINT
-# ----------------------------------------------------
-@router.get("/assessment/solutions")
-async def get_assessment_solutions():
-    try:
-        import subprocess
-        # Run assessment_solutions.py and capture printed output
-        result = subprocess.run(["python", "assessment_solutions.py"], capture_output=True, text=True, check=True)
-        return {
-            "status": "success",
-            "file_name": "assessment_solutions.py",
-            "stdout": result.stdout
-        }
-    except Exception as e:
-        # Fallback if execution fails, read file directly
-        try:
-            with open("assessment_solutions.py", "r") as f:
-                code = f.read()
-            return {
-                "status": "warning",
-                "error": str(e),
-                "file_name": "assessment_solutions.py",
-                "code": code
-            }
-        except Exception as file_err:
-            raise HTTPException(status_code=500, detail=f"Failed to execute or read solutions: {file_err}")
+
 
 # ----------------------------------------------------
 # SYSTEM HEALTH ENDPOINT

@@ -1251,6 +1251,7 @@ function stopTrainer() {
     .then(data => {
       console.log("[LOGGED WORKOUT]", data);
       addFeedbackLog(`Logged ${reps} reps (${sets} sets, ${duration}s) of ${exercise}!`, "success");
+      fetchLatestPerformanceScore();
     })
     .catch(err => {
       console.warn("[Backend Offline] Failed to log workout to server.", err);
@@ -1419,12 +1420,7 @@ function drawRealPoseSkeleton(results, canvas, ctx) {
 /* ==========================================
    3. MODULE 2: AI DIETICIAN & CALORIE COACH
    ========================================== */
-let calorieLogList = [
-  { food: "Oatmeal with Almonds", kcal: 350 },
-  { food: "Grilled Chicken Breast & Rice", kcal: 650 },
-  { food: "Whey Protein Shake", kcal: 250 },
-  { food: "Greek Yogurt with Berries", kcal: 200 }
-];
+let calorieLogList = [];
 
 function initDietician() {
   calculateBMI();
@@ -1439,13 +1435,16 @@ function fetchCalorieLogs() {
   fetch(`${API_BASE}/diet/logs`, { headers })
     .then(res => res.json())
     .then(data => {
-      if (data && data.length > 0) {
+      if (Array.isArray(data)) {
         calorieLogList = data;
+      } else {
+        calorieLogList = [];
       }
       renderCalorieLogs();
     })
     .catch(err => {
-      console.warn("[Backend Offline] Failed to fetch diet logs from server. Using mock defaults.");
+      console.warn("[Backend Offline] Failed to fetch diet logs from server.", err);
+      calorieLogList = [];
       renderCalorieLogs();
     });
 }
@@ -1525,6 +1524,23 @@ function renderCalorieLogs() {
 
   listContainer.innerHTML = "";
   
+  if (!calorieLogList || calorieLogList.length === 0) {
+    const li = document.createElement("li");
+    li.style.justifyContent = "center";
+    li.style.color = "var(--text-muted)";
+    li.innerHTML = `<span class="empty-msg">No meals logged yet. Add your first meal above.</span>`;
+    listContainer.appendChild(li);
+
+    document.getElementById("total-calories-val").innerText = `0 kcal`;
+    document.getElementById("dash-calories").innerText = `0 kcal`;
+    document.getElementById("dash-diet-progress").style.width = `0%`;
+    const progressTextEl = document.getElementById("dash-diet-progress").parentElement.nextElementSibling;
+    if (progressTextEl) {
+      progressTextEl.innerText = `Calories: 0 / 2200 kcal`;
+    }
+    return;
+  }
+
   let total = 0;
   calorieLogList.forEach(item => {
     total += item.kcal;
@@ -1542,7 +1558,10 @@ function renderCalorieLogs() {
   const target = 2200;
   const progressPercent = Math.min((total / target) * 100, 100);
   document.getElementById("dash-diet-progress").style.width = `${progressPercent}%`;
-  document.getElementById("dash-diet-progress").parentElement.nextElementSibling.innerText = `Calories: ${total} / ${target} kcal`;
+  const progressTextEl = document.getElementById("dash-diet-progress").parentElement.nextElementSibling;
+  if (progressTextEl) {
+    progressTextEl.innerText = `Calories: ${total} / ${target} kcal`;
+  }
 }
 
 function handleDietChatKeyPress(event) {
@@ -2054,11 +2073,89 @@ let perfChartInstance = null;
 let rangeChartInstance = null;
 
 function initPerformanceAnalyzer() {
-  // Initialization trigger
+  fetchLatestPerformanceScore();
+}
+
+async function fetchLatestPerformanceScore() {
+  const token = localStorage.getItem("trivan_jwt_token");
+  const headers = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  try {
+    const res = await fetch(`${API_BASE}/workout/logs`, { headers });
+    if (res.status === 200) {
+      const logs = await res.json();
+      updatePerformanceUI(logs);
+    } else {
+      updatePerformanceUI([]);
+    }
+  } catch (err) {
+    console.warn("Failed to fetch latest performance score", err);
+    updatePerformanceUI([]);
+  }
+}
+
+function updatePerformanceUI(logs) {
+  const dashPreviewContainer = document.getElementById("dash-pose-preview-container");
+  const dashEmptyState = document.getElementById("dash-pose-empty-state");
+  const analyzerCardsContainer = document.getElementById("analyzer-cards-container");
+  const analyzerEmptyState = document.getElementById("analyzer-empty-state");
+
+  const dashScoreEl = document.getElementById("dash-pose-score");
+  const efficiencyEl = document.getElementById("score-efficiency");
+  const sessionTimeEl = document.getElementById("score-session-time");
+  const totalRepsEl = document.getElementById("score-total-reps");
+  const totalSetsEl = document.getElementById("score-total-sets");
+
+  if (!logs || logs.length === 0) {
+    if (dashPreviewContainer) dashPreviewContainer.classList.add("hidden");
+    if (dashEmptyState) dashEmptyState.classList.remove("hidden");
+    if (analyzerCardsContainer) analyzerCardsContainer.classList.add("hidden");
+    if (analyzerEmptyState) analyzerEmptyState.classList.remove("hidden");
+    return;
+  }
+
+  if (dashPreviewContainer) dashPreviewContainer.classList.remove("hidden");
+  if (dashEmptyState) dashEmptyState.classList.add("hidden");
+  if (analyzerCardsContainer) analyzerCardsContainer.classList.remove("hidden");
+  if (analyzerEmptyState) analyzerEmptyState.classList.add("hidden");
+
+  // Sort logs by timestamp ascending to find the latest
+  logs.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+  const latestLog = logs[logs.length - 1];
+  
+  // Calculate score from stored performance_score field
+  const perfScore = latestLog.performance_score !== undefined ? latestLog.performance_score : (latestLog.score !== undefined ? latestLog.score : 85);
+
+  // Update elements
+  if (dashScoreEl) {
+    dashScoreEl.innerText = `${perfScore} / 100`;
+  }
+
+  if (efficiencyEl) {
+    efficiencyEl.innerText = `${perfScore} %`;
+  }
+  
+  if (sessionTimeEl) {
+    // Show duration (seconds) converted to minutes as Session Time
+    const durationSec = latestLog.duration || 0;
+    const minutes = Math.floor(durationSec / 60);
+    const seconds = durationSec % 60;
+    sessionTimeEl.innerText = `${minutes}m ${seconds}s`;
+  }
+  
+  if (totalRepsEl) {
+    totalRepsEl.innerText = latestLog.reps || 0;
+  }
+  
+  if (totalSetsEl) {
+    totalSetsEl.innerText = latestLog.sets || 1;
+  }
 }
 
 function refreshAnalyzerData() {
   renderCharts(true);
+  fetchLatestPerformanceScore();
   addFeedbackLog("Performance analytics dashboard updated.", "success");
 }
 

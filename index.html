@@ -228,7 +228,7 @@
                 <span class="metric-label">Streak</span>
               </div>
               <div class="quick-metric border-l">
-                <span class="metric-val" id="dash-calories">1,450 kcal</span>
+                <span class="metric-val" id="dash-calories">0 kcal</span>
                 <span class="metric-label">Daily Calories</span>
               </div>
             </div>
@@ -322,9 +322,12 @@
               </div>
               <h3>Performance Score</h3>
               <p>Motion efficiency & range of motion analysis over time.</p>
-              <div class="card-preview">
+              <div class="card-preview" id="dash-pose-preview-container">
                 <span class="preview-metric">Weekly Score</span>
                 <span class="preview-value text-red" id="dash-pose-score">92 / 100</span>
+              </div>
+              <div class="card-preview hidden" id="dash-pose-empty-state" style="white-space: normal; line-height: 1.4; color: var(--text-muted);">
+                Complete a workout to see your performance score.
               </div>
               <button class="btn btn-red btn-sm btn-nav-tab" data-target="pose-analyzer">View Reports</button>
             </div>
@@ -592,26 +595,10 @@
                 <div class="calorie-history">
                   <h4>Today's Logs</h4>
                   <ul class="calorie-list" id="calorie-list-items">
-                    <li>
-                      <span class="food">Oatmeal with Almonds</span>
-                      <span class="kcal">+350 kcal</span>
-                    </li>
-                    <li>
-                      <span class="food">Grilled Chicken Breast & Rice</span>
-                      <span class="kcal">+650 kcal</span>
-                    </li>
-                    <li>
-                      <span class="food">Whey Protein Shake</span>
-                      <span class="kcal">+250 kcal</span>
-                    </li>
-                    <li>
-                      <span class="food">Greek Yogurt with Berries</span>
-                      <span class="kcal">+200 kcal</span>
-                    </li>
                   </ul>
                   <div class="calorie-total-summary">
                     <span>Total Consumed:</span>
-                    <span class="total-val" id="total-calories-val">1450 kcal</span>
+                    <span class="total-val" id="total-calories-val">0 kcal</span>
                   </div>
                 </div>
               </div>
@@ -887,8 +874,9 @@
 
           <div class="analyzer-grid">
             <!-- Performance Scorecards -->
-            <div class="analyzer-row-cards">
-              <div class="block-card score-stat-card">
+            <div class="analyzer-row-cards" id="analyzer-cards-container">
+              <!-- Efficiency Score -->
+              <div class="block-card score-stat-card" id="card-efficiency">
                 <div class="score-icon color-red"><i data-lucide="gauge"></i></div>
                 <div class="score-info">
                   <span class="label">Efficiency Score</span>
@@ -897,7 +885,38 @@
                 </div>
               </div>
 
-              <div class="block-card score-stat-card">
+              <!-- Session Time -->
+              <div class="block-card score-stat-card" id="card-session-time">
+                <div class="score-icon color-red"><i data-lucide="timer"></i></div>
+                <div class="score-info">
+                  <span class="label">Session Time</span>
+                  <h3 id="score-session-time">0m 0s</h3>
+                  <small class="trend"><i data-lucide="clock"></i> Duration</small>
+                </div>
+              </div>
+
+              <!-- Total Reps -->
+              <div class="block-card score-stat-card" id="card-total-reps">
+                <div class="score-icon color-red"><i data-lucide="activity"></i></div>
+                <div class="score-info">
+                  <span class="label">Total Reps</span>
+                  <h3 id="score-total-reps">0</h3>
+                  <small class="trend"><i data-lucide="dumbbell"></i> Repetitions</small>
+                </div>
+              </div>
+
+              <!-- Total Sets -->
+              <div class="block-card score-stat-card" id="card-total-sets">
+                <div class="score-icon color-red"><i data-lucide="layers"></i></div>
+                <div class="score-info">
+                  <span class="label">Total Sets</span>
+                  <h3 id="score-total-sets">0</h3>
+                  <small class="trend"><i data-lucide="repeat"></i> Sets Completed</small>
+                </div>
+              </div>
+
+              <!-- Range of Motion (ROM) (Hidden for now) -->
+              <div class="block-card score-stat-card hidden" id="card-rom">
                 <div class="score-icon color-red"><i data-lucide="orbit"></i></div>
                 <div class="score-info">
                   <span class="label">Range of Motion (ROM)</span>
@@ -906,7 +925,8 @@
                 </div>
               </div>
 
-              <div class="block-card score-stat-card">
+              <!-- Tempo Consistency (Hidden for now) -->
+              <div class="block-card score-stat-card hidden" id="card-tempo">
                 <div class="score-icon color-red"><i data-lucide="timer"></i></div>
                 <div class="score-info">
                   <span class="label">Tempo Consistency</span>
@@ -914,6 +934,11 @@
                   <small class="trend down"><i data-lucide="trending-down"></i> -1% deviation</small>
                 </div>
               </div>
+            </div>
+
+            <!-- Empty state wrapper when no workouts exist -->
+            <div class="block-card hidden" id="analyzer-empty-state" style="padding: 30px; text-align: center; margin-bottom: 20px;">
+              <p style="color: var(--text-muted); font-size: 1.1rem; margin: 0;">Complete a workout to see your performance score.</p>
             </div>
 
             <!-- Analytical Charts -->

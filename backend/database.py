@@ -24,12 +24,7 @@ if not MONGODB_URI:
 # In-Memory database fallbacks for developer convenience
 in_memory_db = {
     "users": [],
-    "calories": [
-        {"food": "Oatmeal with Almonds", "kcal": 350, "timestamp": time.time() - 3600},
-        {"food": "Grilled Chicken Breast & Rice", "kcal": 650, "timestamp": time.time() - 7200},
-        {"food": "Whey Protein Shake", "kcal": 250, "timestamp": time.time() - 10800},
-        {"food": "Greek Yogurt with Berries", "kcal": 200, "timestamp": time.time() - 14400}
-    ],
+    "diet_logs": [],
     "habits": [],
     "workouts": [],
     "otp_sessions": {}
@@ -77,8 +72,8 @@ def insert_document(collection_name: str, document: Dict[str, Any]):
     # In-memory fallback
     if collection_name == "users":
         in_memory_db["users"].append(document)
-    elif collection_name == "calories":
-        in_memory_db["calories"].append(document)
+    elif collection_name == "diet_logs":
+        in_memory_db["diet_logs"].append(document)
     elif collection_name == "habits":
         in_memory_db["habits"].append(document)
     elif collection_name == "workouts":
@@ -105,8 +100,8 @@ def find_documents(collection_name: str, query: Dict[str, Any] = None) -> List[D
     # In-memory fallback
     if collection_name == "users":
         return in_memory_db["users"]
-    elif collection_name == "calories":
-        return in_memory_db["calories"]
+    elif collection_name == "diet_logs":
+        return in_memory_db["diet_logs"]
     elif collection_name == "habits":
         return in_memory_db["habits"]
     elif collection_name == "workouts":

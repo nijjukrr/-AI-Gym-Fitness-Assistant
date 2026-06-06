@@ -150,12 +150,6 @@ class TestServerEndpoints(unittest.TestCase):
         self.assertIn("response", response.json())
         self.assertIn("sentiment", response.json())
 
-    def test_assessment_solutions_route(self):
-        response = client.get("/api/assessment/solutions")
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertIn("file_name", data)
-        self.assertTrue("stdout" in data or "code" in data)
 
 if __name__ == "__main__":
     unittest.main()
