@@ -245,7 +245,7 @@ def get_haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -
     a = (math.sin(dLat / 2) * math.sin(dLat / 2) +
          math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
          math.sin(dLon / 2) * math.sin(dLon / 2))
-    c = 2 * math.atan2(math.sqrt(a), Math.sqrt(1 - a))
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
 @router.get("/gyms/search")

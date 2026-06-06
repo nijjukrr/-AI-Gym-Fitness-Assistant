@@ -389,14 +389,6 @@
             </div>
         </div>
 
-        <!-- Educational Assessment Section -->
-        <div class="activity-section" style="margin-top: 2rem;">
-            <h2><i data-lucide="award" style="color:var(--accent-orange)"></i> AI/ML Grading Module (Level 1 Assessment)</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 1rem;">This section runs and verifies the educational grading solution <code>assessment_solutions.py</code> in real-time.</p>
-            <div style="background: rgba(0,0,0,0.3); padding: 1.5rem; border-radius: 0.5rem; border: 1px solid var(--border-light); max-height: 250px; overflow-y: auto;">
-                <pre id="assessment-stdout" style="margin:0; font-family: monospace; color:#3b82f6; font-size: 0.9rem; line-height: 1.4;">Running grading test...</pre>
-            </div>
-        </div>
     </div>
 
     <script>
@@ -565,31 +557,10 @@
             }
         }
 
-        async function loadAssessment() {
-            try {
-                const res = await fetch('/api/assessment/solutions');
-                const data = await res.json();
-                if (data.status === 'success') {
-                    document.getElementById('assessment-stdout').textContent = data.stdout;
-                } else if (data.status === 'warning') {
-                    document.getElementById('assessment-stdout').textContent = `Execution warning: ${data.error}\n\nCode contents:\n${data.code}`;
-                    document.getElementById('assessment-stdout').style.color = '#f97316';
-                } else {
-                    document.getElementById('assessment-stdout').textContent = 'Error running assessment solutions.';
-                    document.getElementById('assessment-stdout').style.color = '#ef4444';
-                }
-            } catch (err) {
-                console.error(err);
-                document.getElementById('assessment-stdout').textContent = 'Error loading assessment solutions.';
-                document.getElementById('assessment-stdout').style.color = '#ef4444';
-            }
-        }
-
         // Bootstrapping
         loadStats();
         renderPlotlyCharts();
         loadRecentActivity();
-        loadAssessment();
 
         // Refresh database logs every 10 seconds for real-time dashboard monitoring
         setInterval(() => {

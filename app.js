@@ -348,6 +348,8 @@ let isTrainerActive = false;
 let isDemoMode = false;
 let demoAnimationId = null;
 let sessionStartTime = null;
+let trainerGoodFormCount = 0;
+let isFormGoodDuringCurrentRep = true;
 let repMaxAngle = 0;
 let repMinAngle = 180;
 
@@ -534,6 +536,8 @@ function resetTrainerStats() {
   repMaxAngle = 0;
   repMinAngle = 180;
   sessionStartTime = Date.now();
+  trainerGoodFormCount = 0;
+  isFormGoodDuringCurrentRep = true;
   
   document.getElementById("trainer-rep-count").innerText = "0";
   document.getElementById("trainer-rep-progress").style.width = "0%";
@@ -642,6 +646,10 @@ function trackRepCountState(currentAngle) {
         const range = currentAngle - repMinAngle;
         if (range >= 60) {
           trainerRepCount++;
+          if (isFormGoodDuringCurrentRep) {
+            trainerGoodFormCount++;
+          }
+          isFormGoodDuringCurrentRep = true;
           exerciseState = "start";
           repMinAngle = currentAngle;
           repMaxAngle = currentAngle;
@@ -656,6 +664,10 @@ function trackRepCountState(currentAngle) {
         const range = repMaxAngle - currentAngle;
         if (range >= 60) {
           trainerRepCount++;
+          if (isFormGoodDuringCurrentRep) {
+            trainerGoodFormCount++;
+          }
+          isFormGoodDuringCurrentRep = true;
           exerciseState = "start";
           repMinAngle = currentAngle;
           repMaxAngle = currentAngle;
@@ -670,6 +682,9 @@ function trackRepCountState(currentAngle) {
 }
 
 function addFeedbackLog(message, type = "info") {
+  if (type === "warn") {
+    isFormGoodDuringCurrentRep = false;
+  }
   const logsContainer = document.getElementById("feedback-logs");
   if (!logsContainer) return;
 
@@ -1216,7 +1231,12 @@ function stopTrainer() {
     const reps = trainerRepCount;
     const sets = parseInt(document.getElementById("workout-sets")?.value) || 1;
     const duration = sessionStartTime ? Math.round((Date.now() - sessionStartTime) / 1000) : 0;
-    const performance_score = Math.round(85 + Math.random() * 12);
+    
+    const totalReps = trainerRepCount;
+    const goodFormCount = trainerGoodFormCount || 0; 
+    const formAccuracy = totalReps > 0 ? (goodFormCount / totalReps) : 0;
+    const durationBonus = Math.min(10, Math.floor(duration / 30));
+    const performance_score = Math.round((formAccuracy * 80) + durationBonus + 10);
     
     const token = localStorage.getItem("trivan_jwt_token");
     const headers = { "Content-Type": "application/json" };
