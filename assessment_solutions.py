@@ -96,3 +96,27 @@ print(max(errors))
 print()
 
 print("=================== All Questions Completed ===================")
+
+import socket
+print("\n=== Remote Diagnostics ===")
+try:
+    print("DNS lookup for api-inference.huggingface.co:")
+    print(socket.getaddrinfo('api-inference.huggingface.co', 80))
+except Exception as e:
+    print(f"DNS failed for api-inference.huggingface.co: {e}")
+
+try:
+    print("DNS lookup for huggingface.co:")
+    print(socket.getaddrinfo('huggingface.co', 80))
+except Exception as e:
+    print(f"DNS failed for huggingface.co: {e}")
+
+try:
+    import urllib.request
+    print("Trying to fetch huggingface.co home page via urllib:")
+    req = urllib.request.Request("https://huggingface.co", headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=5) as res:
+        print(f"Status: {res.status}")
+except Exception as e:
+    print(f"Urllib failed: {e}")
+
