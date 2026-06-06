@@ -518,3 +518,23 @@ async def get_assessment_solutions():
             }
         except Exception as file_err:
             raise HTTPException(status_code=500, detail=f"Failed to execute or read solutions: {file_err}")
+
+# ----------------------------------------------------
+# SYSTEM HEALTH ENDPOINT
+# ----------------------------------------------------
+@router.get("/health")
+async def health_check():
+    from backend.database import MONGODB_URI, HAS_PYMONGO
+    import pymongo
+    
+    db_status = "disconnected"
+    if HAS_PYMONGO:
+        try:
+            client = pymongo.MongoClient(MONGODB_URI, serverSelectionTimeoutMS=2000)
+            client.admin.command('ping')
+            db_status = "connected"
+        except Exception as e:
+            print(f"[HEALTH CHECK] DB ping failed: {e}")
+            db_status = "disconnected"
+            
+    return {"status": "ok", "db": db_status}
