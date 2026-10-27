@@ -42,6 +42,18 @@ def connect_db():
             habits_col = db["habits"]
             workouts_col = db["workouts"]
             otp_sessions_col = db["otp_sessions"]
+
+            # Performance Optimization: Ensure indexes on frequently queried fields
+            # Turns O(N) collection scans into O(log N) index lookups for auth and log endpoints
+            try:
+                users_col.create_index("email", unique=True)
+                otp_sessions_col.create_index("email")
+                workouts_col.create_index("user_id")
+                db["diet_logs"].create_index("user_id")
+                habits_col.create_index("email")
+            except Exception as idx_err:
+                print(f"[DATABASE WARNING] Index creation warning: {idx_err}")
+
             print("[DATABASE] Connected to MongoDB Atlas successfully!")
             return True
         except Exception as e:
@@ -98,17 +110,22 @@ def find_documents(collection_name: str, query: Dict[str, Any] = None) -> List[D
             print(f"[DATABASE ERROR] Failed to query {collection_name}: {e}")
             
     # In-memory fallback
+    items = []
     if collection_name == "users":
-        return in_memory_db["users"]
+        items = in_memory_db["users"]
     elif collection_name == "diet_logs":
-        return in_memory_db["diet_logs"]
+        items = in_memory_db["diet_logs"]
     elif collection_name == "habits":
-        return in_memory_db["habits"]
+        items = in_memory_db["habits"]
     elif collection_name == "workouts":
-        return in_memory_db["workouts"]
+        items = in_memory_db["workouts"]
     elif collection_name == "otp_sessions":
-        return list(in_memory_db["otp_sessions"].values())
-    return []
+        items = list(in_memory_db["otp_sessions"].values())
+
+    if not query:
+        return items
+    # Filter in-memory fallback items based on query dict
+    return [item for item in items if all(item.get(k) == v for k, v in query.items())]
 
 def update_document(collection_name: str, query: Dict[str, Any], update_data: Dict[str, Any], upsert: bool = False):
     col = get_collection(collection_name)

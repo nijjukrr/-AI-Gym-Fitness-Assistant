@@ -1,10 +1,12 @@
 import os
 import time
 import random
+import math
 import asyncio
 from typing import Optional, List
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends, status, Query
 from pydantic import BaseModel
+import httpx
 
 from backend.database import insert_document, find_documents, update_document, db
 from backend.auth import hash_password, verify_password, create_access_token, get_current_user
@@ -232,7 +234,6 @@ async def generate_workout_plan(req: WorkoutGenerateRequest, current_user: dict 
 # GYM RECOMMENDER ENDPOINTS (GOOGLE PLACES API)
 # ----------------------------------------------------
 def get_haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    import math
     R = 3958.8  # Earth radius in miles
     dLat = math.radians(lat2 - lat1)
     dLon = math.radians(lon2 - lon1)
@@ -249,7 +250,6 @@ async def search_gyms(
     current_user: dict = Depends(get_current_user)
 ):
     try:
-        import httpx
         lat_str, lng_str = location.split(",")
         user_lat = float(lat_str)
         user_lng = float(lng_str)
@@ -348,7 +348,6 @@ async def call_huggingface_inference(prompt: str, system_prompt: str) -> Optiona
     if not hf_key:
         return None
     try:
-        import httpx
         headers = {"Authorization": f"Bearer {hf_key}", "Content-Type": "application/json"}
         # Use a lightweight conversational model
         url = "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta"
@@ -376,7 +375,6 @@ async def call_gemini(prompt: str) -> Optional[str]:
     if not gemini_key:
         return None
     try:
-        import httpx
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={gemini_key}"
         payload = {
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -391,7 +389,6 @@ async def call_gemini(prompt: str) -> Optional[str]:
     return None
 
 async def call_huggingface(message: str, system_prompt: str) -> str:
-    import httpx
     api_key = os.getenv("HUGGINGFACE_API_KEY")
     if not api_key:
         return "ERROR: HUGGINGFACE_API_KEY env var not set on server"
@@ -561,15 +558,20 @@ async def get_admin_habits():
 # ----------------------------------------------------
 @router.get("/health")
 async def health_check():
-    from backend.database import MONGODB_URI, HAS_PYMONGO
-    import pymongo
+    from backend.database import db, HAS_PYMONGO, connect_db
     
     db_status = "disconnected"
     if HAS_PYMONGO:
         try:
-            client = pymongo.MongoClient(MONGODB_URI, serverSelectionTimeoutMS=2000)
-            client.admin.command('ping')
-            db_status = "connected"
+            # Performance Optimization: Reuse existing MongoClient connection pool
+            # instead of instantiating a new client and pool on every healthcheck request
+            if db is not None and getattr(db, "client", None) is not None:
+                db.client.admin.command('ping')
+                db_status = "connected"
+            else:
+                if connect_db() and db is not None and getattr(db, "client", None) is not None:
+                    db.client.admin.command('ping')
+                    db_status = "connected"
         except Exception as e:
             print(f"[HEALTH CHECK] DB ping failed: {e}")
             db_status = "disconnected"
