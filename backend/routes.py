@@ -8,7 +8,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, De
 from pydantic import BaseModel
 import httpx
 
-from backend.database import insert_document, find_documents, update_document, count_documents, db
+from backend.database import insert_document, find_documents, find_one_document, update_document, count_documents, db
 from backend.auth import hash_password, verify_password, create_access_token, get_current_user
 
 # Import AI Models
@@ -94,19 +94,17 @@ async def login(req: LoginRequest):
     password = req.password
     otp = req.otp
     
-    # 1. Verify OTP first
-    otp_records = find_documents("otp_sessions", {"email": email})
-    if not otp_records:
+    # 1. Verify OTP first using find_one_document (Performance Optimization: O(1) single-doc fetch)
+    record = find_one_document("otp_sessions", {"email": email})
+    if not record:
         raise HTTPException(status_code=400, detail="No active verification session found. Verify Gmail first.")
     
-    record = otp_records[0]
     if record.get("otp") != otp and otp != "123456":
         raise HTTPException(status_code=400, detail="Invalid verification code.")
     
-    # 2. Check if user already exists
-    users = find_documents("users", {"email": email})
-    if users:
-        user = users[0]
+    # 2. Check if user already exists using find_one_document (Performance Optimization: O(1) single-doc fetch)
+    user = find_one_document("users", {"email": email})
+    if user:
         # Verify password
         if not verify_password(password, user.get("password")):
             raise HTTPException(status_code=401, detail="Authentication failed. Incorrect password.")
