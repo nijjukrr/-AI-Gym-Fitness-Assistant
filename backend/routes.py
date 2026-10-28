@@ -8,7 +8,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, De
 from pydantic import BaseModel
 import httpx
 
-from backend.database import insert_document, find_documents, update_document, db
+from backend.database import insert_document, find_documents, update_document, count_documents, db
 from backend.auth import hash_password, verify_password, create_access_token, get_current_user
 
 # Import AI Models
@@ -515,20 +515,17 @@ async def iot_sensor_feed(websocket: WebSocket):
 # ----------------------------------------------------
 @router.get("/admin/stats")
 async def get_admin_stats():
-    users = find_documents("users")
-    total_users = len(users)
+    # Performance Optimization: Use count_documents for O(1)/O(log N) server-side queries
+    # and field projection for calorie sums, avoiding network transmission of large collection payloads.
+    total_users = count_documents("users")
+    total_workouts = count_documents("workouts")
     
-    workouts = find_documents("workouts")
-    total_workouts = len(workouts)
-    
-    calories = find_documents("diet_logs")
+    calories = find_documents("diet_logs", projection={"kcal": 1, "_id": 0})
     total_calories = sum(int(item.get("kcal", 0)) for item in calories)
     
-    habits = find_documents("habits")
-    total_habits = len(habits)
+    total_habits = count_documents("habits")
+    completed = count_documents("habits", {"calculated_risk": {"$lte": 25}})
     
-    # Completed habits defined as skip risk <= 25%
-    completed = sum(1 for h in habits if int(h.get("calculated_risk", 0)) <= 25)
     habit_completion = (completed / total_habits * 100) if total_habits > 0 else 75.0 # default mock trend
     
     return {
