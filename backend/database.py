@@ -94,14 +94,14 @@ def insert_document(collection_name: str, document: Dict[str, Any]):
         in_memory_db["otp_sessions"][document.get("email")] = document
     return True
 
-def find_documents(collection_name: str, query: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+def find_documents(collection_name: str, query: Dict[str, Any] = None, projection: Dict[str, Any] = None) -> List[Dict[str, Any]]:
     if query is None:
         query = {}
     col = get_collection(collection_name)
     if col is not None:
         try:
             # Return list of results, excluding ObjectId which causes JSON serialization errors
-            results = list(col.find(query))
+            results = list(col.find(query, projection))
             for r in results:
                 if "_id" in r:
                     r["_id"] = str(r["_id"])
@@ -126,6 +126,59 @@ def find_documents(collection_name: str, query: Dict[str, Any] = None) -> List[D
         return items
     # Filter in-memory fallback items based on query dict
     return [item for item in items if all(item.get(k) == v for k, v in query.items())]
+
+def count_documents(collection_name: str, query: Dict[str, Any] = None) -> int:
+    """
+    Performance Optimization: Counts documents directly on the server without downloading
+    full document payloads over the network.
+    """
+    if query is None:
+        query = {}
+    col = get_collection(collection_name)
+    if col is not None:
+        try:
+            return col.count_documents(query)
+        except Exception as e:
+            print(f"[DATABASE ERROR] Failed to count documents in {collection_name}: {e}")
+
+    # In-memory fallback
+    items = []
+    if collection_name == "users":
+        items = in_memory_db["users"]
+    elif collection_name == "diet_logs":
+        items = in_memory_db["diet_logs"]
+    elif collection_name == "habits":
+        items = in_memory_db["habits"]
+    elif collection_name == "workouts":
+        items = in_memory_db["workouts"]
+    elif collection_name == "otp_sessions":
+        items = list(in_memory_db["otp_sessions"].values())
+
+    if not query:
+        return len(items)
+
+    count = 0
+    for item in items:
+        match = True
+        for k, v in query.items():
+            if isinstance(v, dict) and "$lte" in v:
+                val = item.get(k)
+                if val is None:
+                    match = False
+                    break
+                try:
+                    if float(val) > float(v["$lte"]):
+                        match = False
+                        break
+                except (ValueError, TypeError):
+                    match = False
+                    break
+            elif item.get(k) != v:
+                match = False
+                break
+        if match:
+            count += 1
+    return count
 
 def update_document(collection_name: str, query: Dict[str, Any], update_data: Dict[str, Any], upsert: bool = False):
     col = get_collection(collection_name)
