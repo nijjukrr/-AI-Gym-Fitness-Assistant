@@ -1079,20 +1079,36 @@ function startDemoTrainer() {
       ctx.stroke();
     });
 
-    document.getElementById("angle-1-val").innerText = `${angle1}°`;
-    document.getElementById("angle-2-val").innerText = `${angle2}°`;
-    document.getElementById("angle-3-val").innerText = `${angle3}°`;
+    // Performance Optimization: Cache DOM element lookups to prevent layout thrashing at 60 FPS
+    if (!window._domCacheTrainer) {
+      window._domCacheTrainer = {
+        angle1: document.getElementById("angle-1-val"),
+        angle2: document.getElementById("angle-2-val"),
+        angle3: document.getElementById("angle-3-val"),
+        repCount: document.getElementById("trainer-rep-count"),
+        repProgress: document.getElementById("trainer-rep-progress"),
+        dashReps: document.getElementById("dash-trainer-reps")
+      };
+    }
+    const dom = window._domCacheTrainer;
+
+    if (dom.angle1) dom.angle1.innerText = `${angle1}°`;
+    if (dom.angle2) dom.angle2.innerText = `${angle2}°`;
+    if (dom.angle3) dom.angle3.innerText = `${angle3}°`;
     
     // Process the rep count using our unified state machine
+    const prevRepCount = trainerRepCount;
     trackRepCountState(angle1);
 
-    document.getElementById("trainer-rep-count").innerText = trainerRepCount;
-    
-    const targetReps = currentExercise === "squat" ? 12 : (currentExercise === "jumping-jack" || currentExercise === "calf-raise" || currentExercise === "sit-up" ? 15 : 10);
-    const progressPercent = Math.min((trainerRepCount / targetReps) * 100, 100);
-    document.getElementById("trainer-rep-progress").style.width = `${progressPercent}%`;
-    
-    document.getElementById("dash-trainer-reps").innerText = `${trainerRepCount} Reps`;
+    // Performance Optimization: Only mutate DOM rep counter and progress bar when rep count actually changes
+    if (trainerRepCount !== prevRepCount || frameCount === 1) {
+      if (dom.repCount) dom.repCount.innerText = trainerRepCount;
+
+      const targetReps = currentExercise === "squat" ? 12 : (currentExercise === "jumping-jack" || currentExercise === "calf-raise" || currentExercise === "sit-up" ? 15 : 10);
+      const progressPercent = Math.min((trainerRepCount / targetReps) * 100, 100);
+      if (dom.repProgress) dom.repProgress.style.width = `${progressPercent}%`;
+      if (dom.dashReps) dom.dashReps.innerText = `${trainerRepCount} Reps`;
+    }
 
     demoAnimationId = requestAnimationFrame(animateDemo);
   }
@@ -1406,18 +1422,35 @@ function drawRealPoseSkeleton(results, canvas, ctx) {
     angle3 = Math.round(Math.abs(points.rAnkle.y - points.rHeel.y));
   }
 
+  // Performance Optimization: Reuse cached DOM references in real pose tracking render loop
+  if (!window._domCacheTrainer) {
+    window._domCacheTrainer = {
+      angle1: document.getElementById("angle-1-val"),
+      angle2: document.getElementById("angle-2-val"),
+      angle3: document.getElementById("angle-3-val"),
+      repCount: document.getElementById("trainer-rep-count"),
+      repProgress: document.getElementById("trainer-rep-progress"),
+      dashReps: document.getElementById("dash-trainer-reps")
+    };
+  }
+  const domReal = window._domCacheTrainer;
+
+  const prevRepCountReal = trainerRepCount;
   trackRepCountState(angle1);
 
-  document.getElementById("angle-1-val").innerText = `${angle1}°`;
-  document.getElementById("angle-2-val").innerText = `${angle2}°`;
-  document.getElementById("angle-3-val").innerText = `${angle3}°`;
-  document.getElementById("trainer-rep-count").innerText = trainerRepCount;
-  
-  const targetReps = currentExercise === "squat" ? 12 : (currentExercise === "jumping-jack" || currentExercise === "calf-raise" || currentExercise === "sit-up" ? 15 : 10);
-  const progressPercent = Math.min((trainerRepCount / targetReps) * 100, 100);
-  document.getElementById("trainer-rep-progress").style.width = `${progressPercent}%`;
-  
-  document.getElementById("dash-trainer-reps").innerText = `${trainerRepCount} Reps`;
+  if (domReal.angle1) domReal.angle1.innerText = `${angle1}°`;
+  if (domReal.angle2) domReal.angle2.innerText = `${angle2}°`;
+  if (domReal.angle3) domReal.angle3.innerText = `${angle3}°`;
+
+  // Only update DOM for reps & progress when rep counter changes
+  if (trainerRepCount !== prevRepCountReal) {
+    if (domReal.repCount) domReal.repCount.innerText = trainerRepCount;
+
+    const targetReps = currentExercise === "squat" ? 12 : (currentExercise === "jumping-jack" || currentExercise === "calf-raise" || currentExercise === "sit-up" ? 15 : 10);
+    const progressPercent = Math.min((trainerRepCount / targetReps) * 100, 100);
+    if (domReal.repProgress) domReal.repProgress.style.width = `${progressPercent}%`;
+    if (domReal.dashReps) domReal.dashReps.innerText = `${trainerRepCount} Reps`;
+  }
 }
 
 /* ==========================================
