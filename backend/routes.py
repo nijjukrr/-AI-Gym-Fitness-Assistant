@@ -23,6 +23,17 @@ habit_predictor = HabitPredictor()
 diet_planner = DietPlanner()
 workout_planner = WorkoutPlanner()
 
+# Performance Optimization: Reuse a shared HTTP client to keep-alive TCP/TLS connections
+# across requests, avoiding setup/teardown overhead on every external API call.
+# Initialized lazily on the active event loop to ensure event-loop thread safety.
+_http_client: Optional[httpx.AsyncClient] = None
+
+def get_http_client() -> httpx.AsyncClient:
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(timeout=30.0)
+    return _http_client
+
 # ----------------------------------------------------
 # Pydantic Schemas
 # ----------------------------------------------------
@@ -267,69 +278,69 @@ async def search_gyms(
         out center;
         """
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            res = await client.post(
-                overpass_url,
-                data={"data": query},
-                headers={
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "User-Agent": "TrivansTechAiGymAssistant/1.0 (contact@trivanstech.com)"
-                }
+        client = get_http_client()
+        res = await client.post(
+            overpass_url,
+            data={"data": query},
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "User-Agent": "TrivansTechAiGymAssistant/1.0 (contact@trivanstech.com)"
+            }
+        )
+
+        if res.status_code != 200:
+            print(f"[OSM Gym Search Error] status={res.status_code} body={res.text}")
+            raise HTTPException(
+                status_code=400,
+                detail="Location services unavailable. Please try again later."
             )
 
-            if res.status_code != 200:
-                print(f"[OSM Gym Search Error] status={res.status_code} body={res.text}")
-                raise HTTPException(
-                    status_code=400,
-                    detail="Location services unavailable. Please try again later."
-                )
+        data = res.json()
+        elements = data.get("elements", [])
 
-            data = res.json()
-            elements = data.get("elements", [])
+        gyms = []
+        for item in elements:
+            tags = item.get("tags", {})
+            name = tags.get("name")
+            if not name:
+                continue
 
-            gyms = []
-            for item in elements:
-                tags = item.get("tags", {})
-                name = tags.get("name")
-                if not name:
-                    continue
+            if item["type"] == "node":
+                g_lat = item["lat"]
+                g_lng = item["lon"]
+            else:
+                center = item.get("center", {})
+                g_lat = center.get("lat", user_lat)
+                g_lng = center.get("lon", user_lng)
 
-                if item["type"] == "node":
-                    g_lat = item["lat"]
-                    g_lng = item["lon"]
-                else:
-                    center = item.get("center", {})
-                    g_lat = center.get("lat", user_lat)
-                    g_lng = center.get("lon", user_lng)
+            dist = get_haversine_distance(user_lat, user_lng, g_lat, g_lng)
 
-                dist = get_haversine_distance(user_lat, user_lng, g_lat, g_lng)
+            place_hash = hash(name)
+            pool = (place_hash % 3 == 0)
+            sauna = (place_hash % 4 == 0)
+            trainers = (place_hash % 2 == 0)
+            rating = float(tags.get("stars", 0)) or round(3.5 + (place_hash % 30) / 20, 1)
 
-                place_hash = hash(name)
-                pool = (place_hash % 3 == 0)
-                sauna = (place_hash % 4 == 0)
-                trainers = (place_hash % 2 == 0)
-                rating = float(tags.get("stars", 0)) or round(3.5 + (place_hash % 30) / 20, 1)
+            gyms.append({
+                "name": name,
+                "address": tags.get("addr:street", "Nearby Location"),
+                "calculatedDistance": round(dist, 1),
+                "calculatedMatch": int(min(99, 70 + rating * 5)),
+                "pool": pool,
+                "sauna": sauna,
+                "trainers": trainers,
+                "rating": round(rating, 1)
+            })
 
-                gyms.append({
-                    "name": name,
-                    "address": tags.get("addr:street", "Nearby Location"),
-                    "calculatedDistance": round(dist, 1),
-                    "calculatedMatch": int(min(99, 70 + rating * 5)),
-                    "pool": pool,
-                    "sauna": sauna,
-                    "trainers": trainers,
-                    "rating": round(rating, 1)
-                })
+        gyms.sort(key=lambda x: x["calculatedDistance"])
 
-            gyms.sort(key=lambda x: x["calculatedDistance"])
+        if not gyms:
+            raise HTTPException(
+                status_code=404,
+                detail="No gyms found nearby. Try increasing your search radius."
+            )
 
-            if not gyms:
-                raise HTTPException(
-                    status_code=404,
-                    detail="No gyms found nearby. Try increasing your search radius."
-                )
-
-            return gyms
+        return gyms
 
     except HTTPException:
         raise
@@ -355,17 +366,17 @@ async def call_huggingface_inference(prompt: str, system_prompt: str) -> Optiona
             "inputs": f"<|system|>\n{system_prompt}</s>\n<|user|>\n{prompt}</s>\n<|assistant|>\n",
             "parameters": {"max_new_tokens": 150}
         }
-        async with httpx.AsyncClient() as client:
-            res = await client.post(url, headers=headers, json=payload, timeout=8.0)
-            if res.status_code == 200:
-                resp_json = res.json()
-                if isinstance(resp_json, list) and len(resp_json) > 0:
-                    gen = resp_json[0].get("generated_text", "")
-                    if "<|assistant|>\n" in gen:
-                        return gen.split("<|assistant|>\n")[-1].strip()
-                    return gen.strip()
-                elif isinstance(resp_json, dict) and "generated_text" in resp_json:
-                    return resp_json["generated_text"].strip()
+        client = get_http_client()
+        res = await client.post(url, headers=headers, json=payload, timeout=8.0)
+        if res.status_code == 200:
+            resp_json = res.json()
+            if isinstance(resp_json, list) and len(resp_json) > 0:
+                gen = resp_json[0].get("generated_text", "")
+                if "<|assistant|>\n" in gen:
+                    return gen.split("<|assistant|>\n")[-1].strip()
+                return gen.strip()
+            elif isinstance(resp_json, dict) and "generated_text" in resp_json:
+                return resp_json["generated_text"].strip()
     except Exception as e:
         print(f"[HF Chat Error] {e}")
     return None
@@ -380,10 +391,10 @@ async def call_gemini(prompt: str) -> Optional[str]:
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"maxOutputTokens": 150}
         }
-        async with httpx.AsyncClient() as client:
-            res = await client.post(url, json=payload, timeout=6.0)
-            if res.status_code == 200:
-                return res.json()["candidates"][0]["content"]["parts"][0]["text"]
+        client = get_http_client()
+        res = await client.post(url, json=payload, timeout=6.0)
+        if res.status_code == 200:
+            return res.json()["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
         print(f"[Gemini Error] {e}")
     return None
@@ -410,19 +421,20 @@ async def call_huggingface(message: str, system_prompt: str) -> str:
     }
     
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            res = await client.post(
-                "https://router.huggingface.co/v1/chat/completions",
-                headers=headers,
-                json=payload
-            )
-            if res.status_code == 200:
-                data = res.json()
-                if "choices" in data and len(data["choices"]) > 0:
-                    return data["choices"][0]["message"]["content"].strip()
-            else:
-                print(f"[HuggingFace API Error] status={res.status_code} response={res.text}")
-                return f"ERROR: HuggingFace API returned status {res.status_code}: {res.text}"
+        client = get_http_client()
+        res = await client.post(
+            "https://router.huggingface.co/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=30.0
+        )
+        if res.status_code == 200:
+            data = res.json()
+            if "choices" in data and len(data["choices"]) > 0:
+                return data["choices"][0]["message"]["content"].strip()
+        else:
+            print(f"[HuggingFace API Error] status={res.status_code} response={res.text}")
+            return f"ERROR: HuggingFace API returned status {res.status_code}: {res.text}"
         return None
     except Exception as e:
         print(f"[HuggingFace Error] {e}")
