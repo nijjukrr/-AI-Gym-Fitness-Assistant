@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 # Safe imports for AI/ML frameworks
 try:
@@ -93,6 +93,28 @@ def insert_document(collection_name: str, document: Dict[str, Any]):
     elif collection_name == "otp_sessions":
         in_memory_db["otp_sessions"][document.get("email")] = document
     return True
+
+def find_one_document(collection_name: str, query: Dict[str, Any] = None, projection: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
+    """
+    Performance Optimization: Fetches a single document using MongoDB native `find_one()`
+    which limits server-side evaluation to 1 document, avoiding full cursor creation
+    and unnecessary list allocations.
+    """
+    if query is None:
+        query = {}
+    col = get_collection(collection_name)
+    if col is not None:
+        try:
+            doc = col.find_one(query, projection)
+            if doc and "_id" in doc:
+                doc["_id"] = str(doc["_id"])
+            return doc
+        except Exception as e:
+            print(f"[DATABASE ERROR] Failed to query single document in {collection_name}: {e}")
+
+    # In-memory fallback
+    docs = find_documents(collection_name, query, projection)
+    return docs[0] if docs else None
 
 def find_documents(collection_name: str, query: Dict[str, Any] = None, projection: Dict[str, Any] = None) -> List[Dict[str, Any]]:
     if query is None:
