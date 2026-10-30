@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 # Safe imports for AI/ML frameworks
 try:
@@ -93,6 +93,43 @@ def insert_document(collection_name: str, document: Dict[str, Any]):
     elif collection_name == "otp_sessions":
         in_memory_db["otp_sessions"][document.get("email")] = document
     return True
+
+def find_one_document(collection_name: str, query: Dict[str, Any] = None, projection: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
+    """
+    Performance Optimization: Uses col.find_one() to stop scanning immediately at 1 match
+    and avoids creating list objects and cursors for single-record queries.
+    """
+    if query is None:
+        query = {}
+    col = get_collection(collection_name)
+    if col is not None:
+        try:
+            doc = col.find_one(query, projection)
+            if doc and "_id" in doc:
+                doc["_id"] = str(doc["_id"])
+            return doc
+        except Exception as e:
+            print(f"[DATABASE ERROR] Failed to query {collection_name}: {e}")
+
+    # In-memory fallback
+    items = []
+    if collection_name == "users":
+        items = in_memory_db["users"]
+    elif collection_name == "diet_logs":
+        items = in_memory_db["diet_logs"]
+    elif collection_name == "habits":
+        items = in_memory_db["habits"]
+    elif collection_name == "workouts":
+        items = in_memory_db["workouts"]
+    elif collection_name == "otp_sessions":
+        items = list(in_memory_db["otp_sessions"].values())
+
+    if not query:
+        return items[0] if items else None
+    for item in items:
+        if all(item.get(k) == v for k, v in query.items()):
+            return item
+    return None
 
 def find_documents(collection_name: str, query: Dict[str, Any] = None, projection: Dict[str, Any] = None) -> List[Dict[str, Any]]:
     if query is None:
