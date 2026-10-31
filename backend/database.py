@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 # Safe imports for AI/ML frameworks
 try:
@@ -93,6 +93,49 @@ def insert_document(collection_name: str, document: Dict[str, Any]):
     elif collection_name == "otp_sessions":
         in_memory_db["otp_sessions"][document.get("email")] = document
     return True
+
+def find_document(collection_name: str, query: Dict[str, Any] = None, projection: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
+    """
+    Performance Optimization: Retrieves a single document using native col.find_one().
+    Halts collection scan immediately upon first match (O(1) with indexed queries or early termination),
+    avoiding cursor allocation, full-list serialization, and unnecessary network data transfer.
+    """
+    if query is None:
+        query = {}
+    col = get_collection(collection_name)
+    if col is not None:
+        try:
+            doc = col.find_one(query, projection)
+            if doc is not None and "_id" in doc:
+                doc["_id"] = str(doc["_id"])
+            return doc
+        except Exception as e:
+            print(f"[DATABASE ERROR] Failed to query single document in {collection_name}: {e}")
+
+    # In-memory fallback: fast direct dictionary lookup for OTP sessions
+    if collection_name == "otp_sessions" and "email" in query and len(query) == 1:
+        return in_memory_db["otp_sessions"].get(query["email"])
+
+    items = []
+    if collection_name == "users":
+        items = in_memory_db["users"]
+    elif collection_name == "diet_logs":
+        items = in_memory_db["diet_logs"]
+    elif collection_name == "habits":
+        items = in_memory_db["habits"]
+    elif collection_name == "workouts":
+        items = in_memory_db["workouts"]
+    elif collection_name == "otp_sessions":
+        items = list(in_memory_db["otp_sessions"].values())
+
+    if not query:
+        return items[0] if items else None
+
+    # Early exit on first match instead of filtering all items into a new list
+    for item in items:
+        if all(item.get(k) == v for k, v in query.items()):
+            return item
+    return None
 
 def find_documents(collection_name: str, query: Dict[str, Any] = None, projection: Dict[str, Any] = None) -> List[Dict[str, Any]]:
     if query is None:
