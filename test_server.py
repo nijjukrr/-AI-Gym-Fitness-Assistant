@@ -150,6 +150,22 @@ class TestServerEndpoints(unittest.TestCase):
         self.assertIn("response", response.json())
         self.assertIn("sentiment", response.json())
 
+    def test_gzip_compression_enabled(self):
+        # Requests indicating gzip support should receive gzip-encoded payloads for resources >= 1000 bytes
+        response = client.get("/index.css", headers={"Accept-Encoding": "gzip"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("content-encoding"), "gzip")
+        # Gzip compressed size of index.css should be substantially smaller than raw ~59KB
+        content_length = response.headers.get("content-length")
+        if content_length is not None:
+            self.assertLess(int(content_length), 20000)
+
+    def test_gzip_compression_identity(self):
+        # Requests that explicitly do not accept gzip should receive uncompressed response
+        response = client.get("/index.css", headers={"Accept-Encoding": "identity"})
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.headers.get("content-encoding"))
+
 
 if __name__ == "__main__":
     unittest.main()
