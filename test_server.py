@@ -150,6 +150,12 @@ class TestServerEndpoints(unittest.TestCase):
         self.assertIn("response", response.json())
         self.assertIn("sentiment", response.json())
 
+    def test_gzip_compression(self):
+        # Verify GZipMiddleware compresses large assets (>1000 bytes) when Accept-Encoding includes gzip
+        response = client.get("/app.js", headers={"Accept-Encoding": "gzip"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("content-encoding"), "gzip")
+
 
 if __name__ == "__main__":
     unittest.main()
