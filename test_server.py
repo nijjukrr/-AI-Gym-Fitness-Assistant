@@ -150,6 +150,32 @@ class TestServerEndpoints(unittest.TestCase):
         self.assertIn("response", response.json())
         self.assertIn("sentiment", response.json())
 
+    def test_gzip_compression_enabled_for_large_payloads(self):
+        # When client accepts gzip encoding and payload exceeds threshold (>1000 bytes),
+        # response should have Content-Encoding: gzip and reduced network transfer size
+        headers = {"Accept-Encoding": "gzip"}
+        res = client.get("/app.js", headers=headers)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.headers.get("content-encoding"), "gzip")
+        # TestClient automatically decompresses res.content, but tracks wire bytes in num_bytes_downloaded
+        # Ensure compressed wire transfer size is reduced by >70% compared to raw ~95KB
+        self.assertLess(res.num_bytes_downloaded, 30000)
+
+    def test_gzip_compression_bypassed_without_accept_header(self):
+        # When client does not request gzip encoding, Content-Encoding should not be gzip
+        headers = {"Accept-Encoding": "identity"}
+        res = client.get("/app.js", headers=headers)
+        self.assertEqual(res.status_code, 200)
+        self.assertNotEqual(res.headers.get("content-encoding"), "gzip")
+        self.assertGreater(res.num_bytes_downloaded, 50000)
+
+    def test_gzip_compression_bypassed_for_small_responses(self):
+        # Small responses below minimum_size (e.g. /health status check) shouldn't incur gzip overhead
+        headers = {"Accept-Encoding": "gzip"}
+        res = client.get("/api/health", headers=headers)
+        self.assertEqual(res.status_code, 200)
+        self.assertIsNone(res.headers.get("content-encoding"))
+
 
 if __name__ == "__main__":
     unittest.main()
