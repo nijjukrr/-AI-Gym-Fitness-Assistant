@@ -150,6 +150,23 @@ class TestServerEndpoints(unittest.TestCase):
         self.assertIn("response", response.json())
         self.assertIn("sentiment", response.json())
 
+    def test_find_document(self):
+        from backend.database import find_document, insert_document
+
+        # Test found document
+        user = find_document("users", {"email": self.test_email})
+        self.assertIsNotNone(user)
+        self.assertEqual(user["email"], self.test_email)
+
+        # Test non-matching query returns None
+        non_existent = find_document("users", {"email": "nonexistent_email_12345@example.com"})
+        self.assertIsNone(non_existent)
+
+        # Test otp_sessions single-document lookup
+        otp = find_document("otp_sessions", {"email": self.test_email})
+        self.assertIsNotNone(otp)
+        self.assertEqual(otp["email"], self.test_email)
+
 
 if __name__ == "__main__":
     unittest.main()
