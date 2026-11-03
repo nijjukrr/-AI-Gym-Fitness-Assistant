@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 # Safe imports for AI/ML frameworks
 try:
@@ -126,6 +126,45 @@ def find_documents(collection_name: str, query: Dict[str, Any] = None, projectio
         return items
     # Filter in-memory fallback items based on query dict
     return [item for item in items if all(item.get(k) == v for k, v in query.items())]
+
+def find_document(collection_name: str, query: Dict[str, Any] = None, projection: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
+    """
+    Performance Optimization: Efficiently queries a single document using native find_one() in MongoDB,
+    avoiding cursor overhead and extra document retrieval, while short-circuiting in in-memory fallback.
+    """
+    if query is None:
+        query = {}
+    col = get_collection(collection_name)
+    if col is not None:
+        try:
+            result = col.find_one(query, projection)
+            if result and "_id" in result:
+                result["_id"] = str(result["_id"])
+            return result
+        except Exception as e:
+            print(f"[DATABASE ERROR] Failed to query one from {collection_name}: {e}")
+
+    # In-memory fallback
+    items = []
+    if collection_name == "users":
+        items = in_memory_db["users"]
+    elif collection_name == "diet_logs":
+        items = in_memory_db["diet_logs"]
+    elif collection_name == "habits":
+        items = in_memory_db["habits"]
+    elif collection_name == "workouts":
+        items = in_memory_db["workouts"]
+    elif collection_name == "otp_sessions":
+        items = list(in_memory_db["otp_sessions"].values())
+
+    if not query:
+        return items[0] if items else None
+
+    # Short-circuit on first match
+    for item in items:
+        if all(item.get(k) == v for k, v in query.items()):
+            return item
+    return None
 
 def count_documents(collection_name: str, query: Dict[str, Any] = None) -> int:
     """
