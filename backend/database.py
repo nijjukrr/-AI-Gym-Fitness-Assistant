@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 # Safe imports for AI/ML frameworks
 try:
@@ -93,6 +93,48 @@ def insert_document(collection_name: str, document: Dict[str, Any]):
     elif collection_name == "otp_sessions":
         in_memory_db["otp_sessions"][document.get("email")] = document
     return True
+
+def find_document(collection_name: str, query: Dict[str, Any] = None, projection: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
+    """
+    Performance Optimization: Finds a single document leveraging native find_one() in MongoDB,
+    which stops cursor traversal at limit 1 on the database engine.
+    In the in-memory fallback, it short-circuits on the first match instead of filtering all items.
+    """
+    if query is None:
+        query = {}
+    col = get_collection(collection_name)
+    if col is not None:
+        try:
+            result = col.find_one(query, projection)
+            if result and "_id" in result:
+                result["_id"] = str(result["_id"])
+            return result
+        except Exception as e:
+            print(f"[DATABASE ERROR] Failed to query one from {collection_name}: {e}")
+
+    # In-memory fallback: short-circuit on first match
+    if collection_name == "otp_sessions" and "email" in query:
+        return in_memory_db["otp_sessions"].get(query["email"])
+
+    items = []
+    if collection_name == "users":
+        items = in_memory_db["users"]
+    elif collection_name == "diet_logs":
+        items = in_memory_db["diet_logs"]
+    elif collection_name == "habits":
+        items = in_memory_db["habits"]
+    elif collection_name == "workouts":
+        items = in_memory_db["workouts"]
+    elif collection_name == "otp_sessions":
+        items = list(in_memory_db["otp_sessions"].values())
+
+    if not query:
+        return items[0] if items else None
+
+    for item in items:
+        if all(item.get(k) == v for k, v in query.items()):
+            return item
+    return None
 
 def find_documents(collection_name: str, query: Dict[str, Any] = None, projection: Dict[str, Any] = None) -> List[Dict[str, Any]]:
     if query is None:
