@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 # Safe imports for AI/ML frameworks
 try:
@@ -126,6 +126,49 @@ def find_documents(collection_name: str, query: Dict[str, Any] = None, projectio
         return items
     # Filter in-memory fallback items based on query dict
     return [item for item in items if all(item.get(k) == v for k, v in query.items())]
+
+def find_document(collection_name: str, query: Dict[str, Any] = None, projection: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
+    """
+    Performance Optimization: Retrieves a single document leveraging native find_one()
+    in MongoDB to avoid full cursor instantiation and early termination on match,
+    with O(1) dictionary lookup or short-circuit search on in-memory fallbacks.
+    """
+    if query is None:
+        query = {}
+    col = get_collection(collection_name)
+    if col is not None:
+        try:
+            doc = col.find_one(query, projection)
+            if doc and "_id" in doc:
+                doc["_id"] = str(doc["_id"])
+            return doc
+        except Exception as e:
+            print(f"[DATABASE ERROR] Failed to query single document in {collection_name}: {e}")
+
+    # In-memory fallback: O(1) dictionary key lookup for otp_sessions
+    if collection_name == "otp_sessions" and "email" in query:
+        session = in_memory_db["otp_sessions"].get(query["email"])
+        if session and all(session.get(k) == v for k, v in query.items()):
+            return session
+        return None
+
+    items = []
+    if collection_name == "users":
+        items = in_memory_db["users"]
+    elif collection_name == "diet_logs":
+        items = in_memory_db["diet_logs"]
+    elif collection_name == "habits":
+        items = in_memory_db["habits"]
+    elif collection_name == "workouts":
+        items = in_memory_db["workouts"]
+    elif collection_name == "otp_sessions":
+        items = list(in_memory_db["otp_sessions"].values())
+
+    # Short-circuit on first match to avoid iterating the entire list
+    for item in items:
+        if all(item.get(k) == v for k, v in query.items()):
+            return item
+    return None
 
 def count_documents(collection_name: str, query: Dict[str, Any] = None) -> int:
     """
