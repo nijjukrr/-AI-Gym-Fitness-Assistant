@@ -9,6 +9,7 @@ os.environ.setdefault("JWT_SECRET", "test_secret_key")
 
 # Import the FastAPI app
 from server import app
+from backend.database import find_document
 
 client = TestClient(app)
 
@@ -149,6 +150,17 @@ class TestServerEndpoints(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("response", response.json())
         self.assertIn("sentiment", response.json())
+
+    def test_find_document(self):
+        # Test finding existing document returns dict directly
+        doc = find_document("users", {"email": self.test_email})
+        self.assertIsNotNone(doc)
+        self.assertIsInstance(doc, dict)
+        self.assertEqual(doc.get("email"), self.test_email)
+
+        # Test non-existent document returns None
+        missing = find_document("users", {"email": "nonexistent@gmail.com"})
+        self.assertIsNone(missing)
 
 
 if __name__ == "__main__":
