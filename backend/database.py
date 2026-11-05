@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 # Safe imports for AI/ML frameworks
 try:
@@ -93,6 +93,43 @@ def insert_document(collection_name: str, document: Dict[str, Any]):
     elif collection_name == "otp_sessions":
         in_memory_db["otp_sessions"][document.get("email")] = document
     return True
+
+def find_document(collection_name: str, query: Dict[str, Any] = None, projection: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
+    """
+    Performance Optimization: Efficiently queries a single document using MongoDB native find_one(),
+    avoiding the overhead of multi-document cursor allocations, full collection iteration, and array packing.
+    Short-circuits immediately on match.
+    """
+    if query is None:
+        query = {}
+    col = get_collection(collection_name)
+    if col is not None:
+        try:
+            doc = col.find_one(query, projection)
+            if doc and "_id" in doc:
+                doc["_id"] = str(doc["_id"])
+            return doc
+        except Exception as e:
+            print(f"[DATABASE ERROR] Failed to query single document in {collection_name}: {e}")
+
+    # In-memory fallback: short-circuits on the first matching item
+    if collection_name == "otp_sessions" and "email" in query:
+        session = in_memory_db["otp_sessions"].get(query["email"])
+        if session and all(session.get(k) == v for k, v in query.items()):
+            return session
+        return None
+
+    items = in_memory_db.get(collection_name, [])
+    if isinstance(items, dict):
+        items = list(items.values())
+
+    if not query:
+        return items[0] if items else None
+
+    for item in items:
+        if all(item.get(k) == v for k, v in query.items()):
+            return item
+    return None
 
 def find_documents(collection_name: str, query: Dict[str, Any] = None, projection: Dict[str, Any] = None) -> List[Dict[str, Any]]:
     if query is None:
