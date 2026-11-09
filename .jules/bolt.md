@@ -7,3 +7,7 @@
 ## 2026-03-31 - Server-Side Document Counting and Projection for Stats Aggregation
 **Learning:** Calling `find_documents()` without projections to aggregate counts or sums (e.g. in `/admin/stats`) forces MongoDB to serialize and transfer all full collection documents over the network into Python memory. Using native `col.count_documents(query)` and field projection (`projection={"kcal": 1, "_id": 0}`) executes aggregations directly on the database engine, reducing network overhead and Python deserialization latency from O(N * payload_size) to O(1) or O(log N).
 **Action:** Always prefer `count_documents(collection_name, query)` or projections in `backend/database.py` when calculating collection counts or single-field totals.
+
+## 2026-04-01 - Short-Circuiting Single-Record Queries with find_one()
+**Learning:** Calling `find_documents()` for single-entity lookups (such as user authentication in `get_current_user` or OTP verification in `login`) incurs unnecessary overhead because `col.find()` initializes a full cursor, requests batch documents from MongoDB, and serializes the cursor into a Python `list`. Using `find_document()` with native `find_one()` causes MongoDB to stop scanning immediately upon matching the first document, eliminating cursor buffering and list memory allocations on every authenticated request.
+**Action:** Use `find_document(collection_name, query)` rather than `find_documents(...)` whenever fetching a unique or single record.
