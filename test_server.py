@@ -9,6 +9,7 @@ os.environ.setdefault("JWT_SECRET", "test_secret_key")
 
 # Import the FastAPI app
 from server import app
+from backend.database import find_document
 
 client = TestClient(app)
 
@@ -149,6 +150,21 @@ class TestServerEndpoints(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("response", response.json())
         self.assertIn("sentiment", response.json())
+
+    def test_find_document_helper(self):
+        # Test finding existing user
+        user = find_document("users", {"email": self.test_email})
+        self.assertIsNotNone(user)
+        self.assertEqual(user["email"], self.test_email)
+
+        # Test finding non-existent user returns None without error
+        non_user = find_document("users", {"email": "nonexistent_email_12345@test.com"})
+        self.assertIsNone(non_user)
+
+        # Test finding in otp_sessions
+        session = find_document("otp_sessions", {"email": self.test_email})
+        self.assertIsNotNone(session)
+        self.assertEqual(session["email"], self.test_email)
 
 
 if __name__ == "__main__":
