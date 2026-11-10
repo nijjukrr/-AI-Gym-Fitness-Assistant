@@ -6,7 +6,7 @@ import json
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Dict, Any, Optional
-from backend.database import find_documents, insert_document
+from backend.database import find_document, find_documents, insert_document
 
 # Safe imports for standard security packages
 try:
@@ -114,11 +114,12 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token payload missing email claim",
         )
-    # Fetch from database
-    users = find_documents("users", {"email": email})
-    if not users:
+    # Performance Optimization: Use find_document (find_one) to retrieve a single record
+    # directly without cursor iteration or full list allocation
+    user = find_document("users", {"email": email})
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-    return users[0]
+    return user
